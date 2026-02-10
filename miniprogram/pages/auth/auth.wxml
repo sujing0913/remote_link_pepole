@@ -1,0 +1,9 @@
+<view class="auth-container">
+  <view class="auth-content">
+    <text class="auth-title">欢迎使用打卡小程序</text>
+    <text class="auth-desc">需要获取您的微信头像和昵称才能正常使用</text>
+    <button class="auth-btn" bindtap="onAuthClick">
+      授权登录
+    </button>
+  </view>
+</view>

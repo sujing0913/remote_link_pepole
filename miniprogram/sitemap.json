@@ -1,0 +1,10 @@
+{
+  "desc": "关于本小程序的搜索收录设置",
+  "checkData": false,
+  "rules": [
+    {
+      "action": "allow",
+      "page": "*"
+    }
+  ]
+}

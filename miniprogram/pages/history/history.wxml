@@ -1,0 +1,70 @@
+<view class="history-container">
+  <!-- 筛选器 -->
+  <view class="filters">
+    <view wx:if="{{userRole === 'organizer'}}" class="filter-item">
+      <text>参与人：</text>
+      <picker mode="selector" range="{{participantList}}" range-key="nickName" value="{{selectedParticipantIndex}}" bindchange="onParticipantFilterChange">
+        <view class="picker">{{selectedParticipantIndex < participantList.length ? participantList[selectedParticipantIndex].nickName : '全部'}}</view>
+      </picker>
+    </view>
+  </view>
+
+  <!-- 年统计区域 -->
+  <view class="yearly-stats">
+    <view class="stats-title">{{currentYear}}年打卡统计</view>
+    <view class="stats-grid">
+      <view class="stats-card">
+        <text class="num">{{yearlyTotal}}</text>
+        <text class="label">累计打卡</text>
+      </view>
+      <view class="stats-card">
+        <text class="num">{{excellentCount}}</text>
+        <text class="label">优秀(9-10)</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 历史记录表格 -->
+  <view class="history-list">
+    <block wx:for="{{groupedRecords}}" wx:key="month" wx:for-item="monthGroup">
+      <view class="month-group">
+        <view class="month-header" bindtap="toggleMonth" data-month="{{monthGroup.month}}">
+          <text class="month-title">{{monthGroup.month}} ({{monthGroup.records.length}}次)</text>
+          <text class="arrow {{monthGroup.collapsed ? '' : 'expanded'}}">></text>
+        </view>
+        
+        <view class="table-container" hidden="{{monthGroup.collapsed}}">
+          <view class="table">
+            <view class="tr th">
+              <view class="td date">日期/时间</view>
+              <view class="td puncher">参与人</view>
+              <view class="td subject">科目</view>
+              <view class="td content">内容</view>
+              <view class="td score">评分</view>
+              <view class="td eval">综合评价</view>
+              <view class="td suggest">建议</view>
+            </view>
+            <view class="tr" wx:for="{{monthGroup.records}}" wx:key="_id">
+              <view class="td date">
+                <text class="d">{{item.dateStr}}</text>
+                <text class="t">{{item.timeStr}}</text>
+              </view>
+              <view class="td puncher">{{item.participantNickName || '未知'}}</view>
+              <view class="td subject">{{item.subject}}</view>
+              <view class="td content">
+                <text class="link" bindtap="viewMedia" data-item="{{item}}">查看{{item.mediaType === 'video' ? '视频' : '照片'}}</text>
+              </view>
+              <view class="td score">{{item.score === -1 ? '未评分' : item.score}}</view>
+              <view class="td eval">
+                <text class="status-tag status-{{item.evalStatus}}">{{item.evalText}}</text>
+              </view>
+              <view class="td suggest">{{item.suggestion || '-'}}</view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </block>
+  </view>
+  
+  <view wx:if="{{groupedRecords.length === 0}}" class="empty">暂无打卡记录</view>
+</view>
