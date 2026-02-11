@@ -1,9 +1,19 @@
 <view class="auth-container">
   <view class="auth-content">
-    <text class="auth-title">欢迎使用打卡小程序</text>
-    <text class="auth-desc">需要获取您的微信头像和昵称才能正常使用</text>
-    <button class="auth-btn" bindtap="onAuthClick">
-      授权登录
+    <text class="auth-title">完善个人资料</text>
+    
+    <button class="avatar-wrapper" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+      <image class="avatar" src="{{avatarUrl || 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0'}}"></image>
+    </button>
+    <text class="hint-text">点击选择头像</text>
+
+    <view class="nickname-section">
+      <text class="label">昵称</text>
+      <input type="nickname" class="nickname-input" placeholder="请输入或获取昵称" bindblur="onNicknameBlur" bindinput="onNicknameInput" value="{{nickName}}" />
+    </view>
+    
+    <button class="auth-btn" bindtap="onLoginClick">
+      确认登录
     </button>
   </view>
 </view>

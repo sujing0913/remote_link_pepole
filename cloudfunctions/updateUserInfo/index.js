@@ -9,13 +9,19 @@ exports.main = async (event, context) => {
   const openid = wxContext.OPENID
 
   try {
-    // 更新用户信息
-    await db.collection('users').doc(openid).update({
+    // 更新用户信息 - 通过 _openid 字段查找并更新
+    const result = await db.collection('users').where({ _openid: openid }).update({
       data: {
         nickName: nickName,
         avatarUrl: avatarUrl
       }
     })
+    
+    // 检查是否成功更新
+    if (result.stats.updated === 0) {
+      console.warn('未找到用户进行更新，可能用户不存在');
+      return { success: false, message: 'User not found' };
+    }
     
     return { success: true }
   } catch (err) {

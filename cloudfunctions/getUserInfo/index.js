@@ -18,7 +18,8 @@ exports.main = async (event, context) => {
         openId: openid,
         nickName: userData.nickName,
         avatarUrl: userData.avatarUrl,
-        role: userData.role
+        role: userData.role,
+        userId: userData._id // 返回文档ID用于后续更新
       };
     } else {
       // 用户不存在，创建新用户，默认为参与人
@@ -26,14 +27,16 @@ exports.main = async (event, context) => {
       const newUser = {
         nickName: '用户' + openid.substring(0, 6),
         avatarUrl: '',
-        role: 'participant'
+        role: 'participant',
+        _openid: openid
       }
-      await db.collection('users').add({ data: { ...newUser, _openid: openid } })
+      const result = await db.collection('users').add({ data: newUser })
       return { 
         openId: openid,
         nickName: newUser.nickName,
         avatarUrl: newUser.avatarUrl,
-        role: newUser.role
+        role: newUser.role,
+        userId: result._id // 返回新创建的文档ID
       };
     }
   } catch (err) {

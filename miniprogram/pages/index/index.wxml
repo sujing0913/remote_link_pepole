@@ -14,32 +14,27 @@
       <!-- 分隔符 -->
       <view class="separator">|</view>
       
-      <!-- 参与人选择下拉框和退出按钮 -->
+      <!-- 打卡人选择下拉框 -->
       <view class="info-block participant-block">
-        <text>参与人：</text>
+        <text>当前用户：</text>
         <picker mode="selector" range="{{participantList}}" range-key="nickName" value="{{selectedParticipantIndex}}" bindchange="onParticipantChange">
-          <view class="picker">{{selectedParticipantIndex < participantList.length ? participantList[selectedParticipantIndex].nickName : '选择参与人'}}</view>
+          <view class="picker">{{selectedParticipantIndex < participantList.length ? participantList[selectedParticipantIndex].nickName : '选择用户'}}</view>
         </picker>
-        <button wx:if="{{participantList.length > 0 && currentParticipantOpenId !== currentUserOpenId}}" class="exit-btn" bindtap="requestExit">申请退出</button>
       </view>
     </view>
 
-  <!-- 第二行：日期星期 + 身份信息 + 历史记录 -->
+    <!-- 第二行：日期星期 + 身份信息 + 历史记录 -->
     <view class="second-row">
       <view class="date-info">
         <text>{{currentDateStr}}</text>
       </view>
-      <view class="user-role">
-        <text>{{currentUserNickName}} ({{currentUserRole === 'organizer' ? '组织者' : '参与人'}})</text>
-        <view class="logout-tag" bindtap="onLogout">退出</view>
-      </view>
       <view class="history-link" bindtap="goToHistory">历史打卡记录 ></view>
     </view>
 
-    <!-- 第三行：组织人信息（仅对参与人显示） -->
-    <view wx:if="{{currentUserRole !== 'organizer'}}" class="third-row">
+    <!-- 第三行：组织者信息 -->
+    <view class="third-row">
       <view class="supervisor-info">
-        <text>组织人：{{supervisorNickName || '未知'}}</text>
+        <text>组织者：{{supervisorNickName || '加载中...'}}</text>
       </view>
     </view>
   </view>
@@ -60,6 +55,9 @@
     <view class="punch-btn-container">
       <button class="punch-btn" bindtap="onPunch">
         <text>打卡</text>
+      </button>
+      <button class="invite-btn" open-type="share">
+        <text>邀请打卡人</text>
       </button>
     </view>
   </view>

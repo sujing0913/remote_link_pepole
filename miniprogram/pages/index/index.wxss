@@ -16,15 +16,6 @@
   margin-bottom: 50rpx;
 }
 
-.header {
-  width: 100%;
-  background-color: #fff;
-  padding: 30rpx;
-  border-radius: 20rpx;
-  box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.05);
-  margin-bottom: 50rpx;
-}
-
 /* 第一行 */
 .first-row {
   display: flex;
@@ -51,44 +42,7 @@
   margin-right: 10rpx;
 }
 
-.supervisor-block text {
-  margin-right: 10rpx;
-}
-
 .today-punch .label {
-  margin-right: 10rpx;
-}
-
-.supervisor-info text {
-  margin-right: 10rpx;
-}
-
-.puncher-filter-section {
-  display: flex;
-  align-items: center;
-  font-size: 28rpx;
-}
-
-.puncher-filter-section text {
-  margin-right: 10rpx;
-}
-
-.link-btn {
-  margin-left: 10rpx;
-  color: #1890ff; /* 蓝色文字 */
-  font-size: 24rpx;
-  text-decoration: underline; /* 下划线 */
-  display: inline;
-}
-
-
-.puncher-filter-section {
-  display: flex;
-  align-items: center;
-  font-size: 28rpx;
-}
-
-.puncher-filter-section text {
   margin-right: 10rpx;
 }
 
@@ -111,18 +65,7 @@
   color: #333;
 }
 
-.logout-tag {
-  margin-left: 10rpx;
-  font-size: 20rpx;
-  padding: 4rpx 12rpx;
-  background-color: #fa5151;
-  color: white;
-  border-radius: 6rpx;
-  display: inline-block;
-  text-align: center;
-}
-
-/* 第三行：组织人信息 */
+/* 第三行：组织者信息 */
 .third-row {
   display: flex;
   justify-content: space-between;
@@ -140,7 +83,6 @@
   color: #576b95;
 }
 
-/* 其他样式保持不变 */
 .divider {
   width: 100%;
   height: 2rpx;
@@ -170,38 +112,6 @@
   text-align: center;
 }
 
-.exit-btn {
-  margin-left: 20rpx;
-  font-size: 24rpx;
-  padding: 6rpx 16rpx;
-  background-color: #fa5151;
-  color: white;
-  border-radius: 8rpx;
-}
-
-.bind-btn {
-  background-color: #1890ff;
-  color: white;
-  border-radius: 10rpx;
-  padding: 10rpx 20rpx;
-  font-size: 26rpx;
-}
-
-.query-btn {
-  margin: 0 !important;
-  background-color: #07c160;
-  color: #fff;
-}
-
-.stats-section {
-  margin-bottom: 20rpx;
-}
-
-.stat-item {
-  margin-bottom: 10rpx;
-  font-size: 28rpx;
-}
-
 .value {
   font-weight: bold;
 }
@@ -214,30 +124,23 @@
   color: #fa5151;
 }
 
-.history-btn {
-  width: 100% !important;
-  margin-top: 20rpx;
-  font-size: 26rpx;
-  color: #576b95;
-  background: none;
-  border: none;
-}
-
 .main-section {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
 }
 
 .punch-btn-container {
-  width: 400rpx;
-  height: 400rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .punch-btn {
-  width: 100% !important;
-  height: 100% !important;
+  width: 360rpx !important;
+  height: 360rpx !important;
   border-radius: 50%;
   background-color: #07c160;
   color: #fff;
@@ -248,6 +151,7 @@
   font-weight: bold;
   box-shadow: 0 10rpx 40rpx rgba(7, 193, 96, 0.3);
   padding: 0;
+  margin-bottom: 60rpx;
 }
 
 .punch-btn:active {
@@ -255,116 +159,20 @@
   opacity: 0.8;
 }
 
-.divider {
-  width: 100%;
-  height: 2rpx;
-  background-color: #eee;
-  margin: 40rpx 0;
-}
-
-.subject-section {
+.invite-btn {
+  width: 360rpx !important;
+  height: 90rpx !important;
+  background-color: #fff;
+  color: #07c160;
+  border: 2rpx solid #07c160;
+  border-radius: 45rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 50rpx;
-}
-
-.subject-section text {
-  margin-right: 20rpx;
   font-size: 32rpx;
   font-weight: bold;
 }
 
-.picker {
-  padding: 10rpx 20rpx;
-  background: #f0f0f0;
-  border-radius: 10rpx;
-  font-size: 26rpx;
-  min-width: 180rpx;
-  text-align: center;
-}
-
-.bind-btn {
-  background-color: #1890ff;
-  color: white;
-  border-radius: 10rpx;
-  padding: 10rpx 20rpx;
-  font-size: 26rpx;
-}
-
-.picker {
-  padding: 10rpx 20rpx;
-  background: #f0f0f0;
-  border-radius: 10rpx;
-  font-size: 26rpx;
-  min-width: 180rpx;
-  text-align: center;
-}
-
-.query-btn {
-  margin: 0 !important;
-  background-color: #07c160;
-  color: #fff;
-}
-
-.stats-section {
-  margin-bottom: 20rpx;
-}
-
-.stat-item {
-  margin-bottom: 10rpx;
-  font-size: 28rpx;
-}
-
-.value {
-  font-weight: bold;
-}
-
-.value.done {
-  color: #07c160;
-}
-
-.value.pending {
-  color: #fa5151;
-}
-
-.history-btn {
-  width: 100% !important;
-  margin-top: 20rpx;
-  font-size: 26rpx;
-  color: #576b95;
-  background: none;
-  border: none;
-}
-
-.main-section {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.punch-btn-container {
-  width: 400rpx;
-  height: 400rpx;
-}
-
-.punch-btn {
-  width: 100% !important;
-  height: 100% !important;
-  border-radius: 50%;
-  background-color: #07c160;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 48rpx;
-  font-weight: bold;
-  box-shadow: 0 10rpx 40rpx rgba(7, 193, 96, 0.3);
-  padding: 0;
-}
-
-.punch-btn:active {
-  transform: scale(0.95);
-  opacity: 0.8;
+.invite-btn:active {
+  opacity: 0.7;
 }

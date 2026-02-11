@@ -1,10 +1,18 @@
 <view class="history-container">
   <!-- 筛选器 -->
   <view class="filters">
+    <view class="filter-item">
+      <text>日期：</text>
+      <picker mode="multiSelector" range="{{yearMonthRange}}" value="{{selectedYearMonth}}" bindchange="onYearMonthChange">
+        <view class="picker">
+          {{yearMonthRange[0][selectedYearMonth[0]]}}年{{yearMonthRange[1][selectedYearMonth[1]] === '全部' ? '全部月份' : yearMonthRange[1][selectedYearMonth[1]] + '月'}}
+        </view>
+      </picker>
+    </view>
     <view wx:if="{{userRole === 'organizer'}}" class="filter-item">
-      <text>参与人：</text>
+      <text>打卡人：</text>
       <picker mode="selector" range="{{participantList}}" range-key="nickName" value="{{selectedParticipantIndex}}" bindchange="onParticipantFilterChange">
-        <view class="picker">{{selectedParticipantIndex < participantList.length ? participantList[selectedParticipantIndex].nickName : '全部'}}</view>
+        <view class="picker">{{selectedParticipantIndex < participantList.length ? participantList[selectedParticipantIndex].nickName : '全部打卡人'}}</view>
       </picker>
     </view>
   </view>
@@ -18,8 +26,16 @@
         <text class="label">累计打卡</text>
       </view>
       <view class="stats-card">
-        <text class="num">{{excellentCount}}</text>
-        <text class="label">优秀(9-10)</text>
+        <text class="num">{{totalScore}}</text>
+        <text class="label">累计得分</text>
+      </view>
+      <view class="stats-card">
+        <text class="num">{{trophyCount}}</text>
+        <text class="label">奖杯</text>
+      </view>
+      <view class="stats-card">
+        <text class="num">{{flowerCount}}</text>
+        <text class="label">小红花</text>
       </view>
     </view>
   </view>
@@ -37,11 +53,9 @@
           <view class="table">
             <view class="tr th">
               <view class="td date">日期/时间</view>
-              <view class="td puncher">参与人</view>
               <view class="td subject">科目</view>
               <view class="td content">内容</view>
               <view class="td score">评分</view>
-              <view class="td eval">综合评价</view>
               <view class="td suggest">建议</view>
             </view>
             <view class="tr" wx:for="{{monthGroup.records}}" wx:key="_id">
@@ -49,16 +63,26 @@
                 <text class="d">{{item.dateStr}}</text>
                 <text class="t">{{item.timeStr}}</text>
               </view>
-              <view class="td puncher">{{item.participantNickName || '未知'}}</view>
               <view class="td subject">{{item.subject}}</view>
               <view class="td content">
                 <text class="link" bindtap="viewMedia" data-item="{{item}}">查看{{item.mediaType === 'video' ? '视频' : '照片'}}</text>
               </view>
-              <view class="td score">{{item.score === -1 ? '未评分' : item.score}}</view>
-              <view class="td eval">
-                <text class="status-tag status-{{item.evalStatus}}">{{item.evalText}}</text>
+              <view class="td score">
+                <block wx:if="{{userRole === 'organizer'}}">
+                  <input class="edit-input" type="number" value="{{item.score === -1 ? '' : item.score}}" placeholder="评分" bindblur="onScoreBlur" data-id="{{item._id}}" />
+                </block>
+                <block wx:else>
+                  {{item.score === -1 ? '未评分' : item.score}}
+                </block>
               </view>
-              <view class="td suggest">{{item.suggestion || '-'}}</view>
+              <view class="td suggest">
+                <block wx:if="{{userRole === 'organizer'}}">
+                  <input class="edit-input" value="{{item.suggestion}}" placeholder="输入建议" bindblur="onSuggestBlur" data-id="{{item._id}}" />
+                </block>
+                <block wx:else>
+                  {{item.suggestion || '-'}}
+                </block>
+              </view>
             </view>
           </view>
         </view>

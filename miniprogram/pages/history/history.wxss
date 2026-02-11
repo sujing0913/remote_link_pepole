@@ -4,18 +4,30 @@
   border-radius: 15rpx;
   margin-bottom: 20rpx;
   display: flex;
-  justify-content: space-between;
-  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.05);
+  flex-direction: column;
+  gap: 15rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
 }
 
 .filter-item {
   display: flex;
   align-items: center;
+  background: #f8f8f8;
+  padding: 15rpx 20rpx;
+  border-radius: 8rpx;
 }
 
 .filter-item text {
   margin-right: 10rpx;
   font-size: 26rpx;
+  color: #666;
+  white-space: nowrap;
+}
+
+.filter-item .picker {
+  font-size: 28rpx;
+  color: #333;
+  flex: 1;
 }
 
 .history-container {
@@ -41,13 +53,16 @@
 
 .stats-grid {
   display: flex;
-  justify-content: space-around;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20rpx 0;
 }
 
 .stats-card {
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 25%;
 }
 
 .stats-card .num {
@@ -98,7 +113,7 @@
 .table {
   display: flex;
   flex-direction: column;
-  width: 1000rpx; /* 保证表格宽度足够 */
+  width: 1200rpx; /* 保证表格宽度足够，容纳加宽的建议列 */
 }
 
 .tr {
@@ -126,12 +141,21 @@
 }
 
 .date { width: 200rpx; }
-.puncher { width: 150rpx; }
 .subject { width: 120rpx; }
 .content { width: 180rpx; }
-.score { width: 120rpx; }
-.eval { width: 180rpx; }
-.suggest { width: 320rpx; flex: 1; }
+.score { width: 130rpx; }
+.suggest { width: 500rpx; flex: 2; }
+
+/* 编辑状态样式 */
+.edit-input {
+  border: 1rpx solid #e0e0e0;
+  border-radius: 4rpx;
+  width: 90%;
+  height: 50rpx;
+  font-size: 24rpx;
+  background: #fff;
+  padding: 0 5rpx;
+}
 
 .d { font-weight: 500; }
 .t { font-size: 22rpx; color: #999; }
@@ -141,16 +165,6 @@
   text-decoration: underline;
 }
 
-.status-tag {
-  padding: 4rpx 12rpx;
-  border-radius: 6rpx;
-  font-size: 20rpx;
-}
-
-.status-excellent { background-color: #e1f5fe; color: #03a9f4; }
-.status-good { background-color: #e8f5e9; color: #4caf50; }
-.status-improve { background-color: #fff3e0; color: #ff9800; }
-.status-none { background-color: #f5f5f5; color: #999; }
 
 .empty {
   text-align: center;

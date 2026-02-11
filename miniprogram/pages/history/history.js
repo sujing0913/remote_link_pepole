@@ -5,9 +5,12 @@ Page({
   data: {
     currentYear: new Date().getFullYear(),
     yearlyTotal: 0,
-    excellentCount: 0,
+    totalScore: 0,
+    flowerCount: 0,
+    trophyCount: 0,
     groupedRecords: [], // { month: '2023-10', records: [], collapsed: false }
     // 新增筛选数据
+    currentUser: null,
     userRole: '',
     participantList: [],
     selectedParticipantIndex: 0,
@@ -17,7 +20,7 @@ Page({
 
   onLoad: async function() {
     // 从缓存中获取当前用户信息
-    const currentUser = wx.getStorageSync('currentUser');
+    let currentUser = wx.getStorageSync('currentUser');
     
     // 如果没有缓存，说明未授权，跳转回授权页
     if (!currentUser) {
@@ -25,7 +28,23 @@ Page({
       return;
     }
 
+    // 强行从数据库刷新一次用户信息，确保角色和昵称是最新的，解决组织者权限同步延迟问题
+    try {
+      const userRes = await db.collection('users').where({ _openid: currentUser.openId }).get();
+      if (userRes.data.length > 0) {
+        const latestInfo = userRes.data[0];
+        // 更新缓存
+        currentUser.role = latestInfo.role;
+        currentUser.nickName = latestInfo.nickName;
+        currentUser.avatarUrl = latestInfo.avatarUrl;
+        wx.setStorageSync('currentUser', currentUser);
+      }
+    } catch (e) {
+      console.error('刷新用户信息失败', e);
+    }
+
     this.setData({
+      currentUser: currentUser,
       userRole: currentUser.role
     });
 
@@ -49,11 +68,24 @@ Page({
         db.collection('users').where({ _openid: id }).get()
       );
       const participantLists = await Promise.all(userPromises);
-      const participantList = [{ nickName: '全部' }, ...participantLists.flatMap(res => res.data)];
+      
+      // 获取自己的信息
+      const myInfoRes = await db.collection('users').where({ _openid: organizerOpenId }).get();
+      const myInfo = myInfoRes.data[0] || { nickName: '我', _openid: organizerOpenId };
+      const myDisplayInfo = { ...myInfo, nickName: myInfo.nickName };
 
-      that.setData({ participantList });
+      const participantList = [
+        myDisplayInfo,
+        { nickName: '全部打卡人' },
+        ...participantLists.flatMap(res => res.data)
+      ];
+
+      that.setData({ 
+        participantList,
+        selectedParticipantIndex: 0 // 默认选中第一个（即当前用户）
+      });
     } catch (err) {
-      console.error('加载参与人列表失败', err);
+      console.error('加载打卡人列表失败', err);
     }
   },
 
@@ -64,31 +96,58 @@ Page({
     for (let y = startYear; y <= currentYear; y++) {
       years.push(y.toString());
     }
-    const months = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'));
+    const months = ['全部', ...Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'))];
     
     this.setData({
       yearMonthRange: [years, months],
-      selectedYearMonth: [years.length - 1, new Date().getMonth()] // 默认选中当前年月
+      selectedYearMonth: [years.length - 1, new Date().getMonth() + 1] // 默认选中当前年份和当前月份
     });
   },
 
   fetchRecords: async function() {
     wx.showLoading({ title: '加载中...' });
     try {
-      const [selectedYear, selectedMonth] = this.data.selectedYearMonth;
-      const year = parseInt(this.data.yearMonthRange[0][selectedYear]);
-      const month = parseInt(this.data.yearMonthRange[1][selectedMonth]);
+      const [yearIdx, monthIdx] = this.data.selectedYearMonth;
+      const year = parseInt(this.data.yearMonthRange[0][yearIdx]);
+      const monthStr = this.data.yearMonthRange[1][monthIdx];
 
-      const startOfMonth = new Date(year, month - 1, 1);
-      const endOfMonth = new Date(year, month, 0, 23, 59, 59);
+      let startTime, endTime;
+      if (monthStr === '全部') {
+        startTime = new Date(year, 0, 1);
+        endTime = new Date(year, 11, 31, 23, 59, 59);
+      } else {
+        const month = parseInt(monthStr);
+        startTime = new Date(year, month - 1, 1);
+        endTime = new Date(year, month, 0, 23, 59, 59);
+      }
 
       const query = {
-        createTime: _.gte(startOfMonth).and(_.lte(endOfMonth))
+        createTime: _.gte(startTime).and(_.lte(endTime))
       };
 
-      // 如果是组织者且未选择“全部”
-      if (this.data.userRole === 'organizer' && this.data.selectedParticipantIndex > 0) {
-        query.puncherOpenId = this.data.participantList[this.data.selectedParticipantIndex]._openid;
+      this.setData({
+        currentYear: year
+      });
+
+      // 如果是组织者
+      if (this.data.userRole === 'organizer') {
+        if (this.data.selectedParticipantIndex > 0) {
+          query.puncherOpenId = this.data.participantList[this.data.selectedParticipantIndex]._openid;
+        } else {
+          // 全部打卡人：包含自己和所有下属
+          const allRelevantOpenIds = this.data.participantList
+            .filter(p => p._openid)
+            .map(p => p._openid);
+          
+          if (allRelevantOpenIds.length > 0) {
+            query.puncherOpenId = _.in(allRelevantOpenIds);
+          } else {
+            query.puncherOpenId = this.data.currentUser.openId;
+          }
+        }
+      } else {
+        // 普通打卡人只能看到自己的
+        query.puncherOpenId = this.data.currentUser.openId;
       }
 
       const res = await db.collection('check_ins')
@@ -107,7 +166,7 @@ Page({
 
   processRecords: function(records) {
     let yearlyTotal = records.length;
-    let excellentCount = 0;
+    let totalScore = 0;
     const groups = {};
 
     const formattedRecords = records.map(item => {
@@ -122,40 +181,36 @@ Page({
       const dateStr = `${m}-${d}`;
       const timeStr = `${hh}:${mm}`;
 
-      // 计算评价
-      let evalText = '未评分';
-      let evalStatus = 'none';
       if (item.score !== -1) {
-        if (item.score >= 9) {
-          evalText = '优秀';
-          evalStatus = 'excellent';
-          excellentCount++;
-        } else if (item.score >= 6) {
-          evalText = '良好';
-          evalStatus = 'good';
-        } else {
-          evalText = '待改进';
-          evalStatus = 'improve';
-        }
+        totalScore += item.score;
       }
 
-      // 获取参与人昵称
+      // 获取打卡人昵称
       let participantNickName = '未知';
-      if (item.puncherOpenId) {
-        // 尝试从已有的participantList中查找
-        const foundParticipant = this.data.participantList.find(p => p._openid === item.puncherOpenId);
-        if (foundParticipant) {
-          participantNickName = foundParticipant.nickName;
+      const pList = this.data.participantList || [];
+      const curUser = this.data.currentUser;
+
+      // 更加鲁棒的匹配函数
+      const matchName = (id) => {
+        if (!id) return null;
+        // 1. 在打卡人列表中找 (支持 _openid 和 openId 两种命名)
+        const found = pList.find(p => p._openid === id || p.openId === id);
+        if (found) return found.nickName;
+        // 2. 检查是否是当前登录用户本人
+        if (curUser && (id === curUser.openId || id === curUser._openid)) {
+          return curUser.nickName;
         }
-      }
+        return null;
+      };
+
+      // 尝试通过多种可能存在的 ID 字段进行匹配
+      participantNickName = matchName(item.puncherOpenId) || matchName(item._openid) || '未知';
 
       const processedItem = {
         ...item,
         dateStr,
         timeStr,
-        participantNickName,
-        evalText,
-        evalStatus
+        participantNickName
       };
 
       if (!groups[monthKey]) {
@@ -172,9 +227,16 @@ Page({
       collapsed: false
     }));
 
+    // 计算奖杯和小红花
+    // 每100分一个奖杯，每10分一朵小红花
+    const trophyCount = Math.floor(totalScore / 100);
+    const flowerCount = Math.floor((totalScore % 100) / 10);
+
     this.setData({
       yearlyTotal,
-      excellentCount,
+      totalScore,
+      trophyCount,
+      flowerCount,
       groupedRecords
     });
   },
@@ -198,6 +260,54 @@ Page({
   onYearMonthChange(e) {
     this.setData({ selectedYearMonth: e.detail.value });
     this.fetchRecords();
+  },
+
+  // 组织者评分失去焦点
+  onScoreBlur: async function(e) {
+    const id = e.currentTarget.dataset.id;
+    let score = e.detail.value;
+    
+    if (score === '') {
+      score = -1;
+    } else {
+      score = parseInt(score);
+      if (isNaN(score)) {
+        score = -1;
+      } else {
+        // 限制在 0-10 分
+        if (score < 0) score = 0;
+        if (score > 10) score = 10;
+      }
+    }
+
+    try {
+      await db.collection('check_ins').doc(id).update({
+        data: { score: score }
+      });
+      // 静默更新本地数据统计，或者重新拉取数据
+      this.fetchRecords();
+    } catch (err) {
+      console.error('评分更新失败', err);
+      wx.showToast({ title: '更新失败', icon: 'error' });
+    }
+  },
+
+  // 组织者建议失去焦点
+  onSuggestBlur: async function(e) {
+    const id = e.currentTarget.dataset.id;
+    const suggestion = e.detail.value;
+
+    try {
+      await db.collection('check_ins').doc(id).update({
+        data: { suggestion: suggestion }
+      });
+      // 无需全量更新，仅更新本地展示
+      // 但为了保证统计（如果建议影响统计的话，目前不影响）也可以fetch
+      this.fetchRecords();
+    } catch (err) {
+      console.error('建议更新失败', err);
+      wx.showToast({ title: '更新失败', icon: 'error' });
+    }
   },
 
   viewMedia: function(e) {
