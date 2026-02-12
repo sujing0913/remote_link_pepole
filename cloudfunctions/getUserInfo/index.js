@@ -14,21 +14,35 @@ exports.main = async (event, context) => {
     if (userRecord.data.length > 0) {
       // 用户已存在，直接返回
       const userData = userRecord.data[0];
+      // 补全缺失的 teamId 和 teamName
+      if (!userData.teamId) {
+        userData.teamId = openid;
+        userData.teamName = '我的团队';
+        await db.collection('users').doc(userData._id).update({
+          data: { teamId: userData.teamId, teamName: userData.teamName }
+        });
+      }
       return { 
         openId: openid,
         nickName: userData.nickName,
         avatarUrl: userData.avatarUrl,
-        role: userData.role,
-        userId: userData._id // 返回文档ID用于后续更新
+        role: userData.role || 'organizer',
+        teamId: userData.teamId,
+        teamName: userData.teamName,
+        isProfileSet: !!userData.isProfileSet,
+        userId: userData._id 
       };
     } else {
-      // 用户不存在，创建新用户，默认为参与人
-      // 注意：这里无法获取微信昵称，需要客户端在后续更新
+      // 用户不存在，创建新用户
       const newUser = {
-        nickName: '用户' + openid.substring(0, 6),
-        avatarUrl: '',
-        role: 'participant',
-        _openid: openid
+        nickName: '用户' + openid.substring(openid.length - 4),
+        avatarUrl: 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0',
+        role: 'organizer',
+        _openid: openid,
+        teamId: openid, // 默认团队ID为自己的OpenID
+        teamName: '我的团队',
+        isProfileSet: false,
+        createTime: db.serverDate()
       }
       const result = await db.collection('users').add({ data: newUser })
       return { 
@@ -36,7 +50,10 @@ exports.main = async (event, context) => {
         nickName: newUser.nickName,
         avatarUrl: newUser.avatarUrl,
         role: newUser.role,
-        userId: result._id // 返回新创建的文档ID
+        teamId: newUser.teamId,
+        teamName: newUser.teamName,
+        isProfileSet: false,
+        userId: result._id 
       };
     }
   } catch (err) {

@@ -113,7 +113,7 @@
 .table {
   display: flex;
   flex-direction: column;
-  width: 1200rpx; /* 保证表格宽度足够，容纳加宽的建议列 */
+  width: 1350rpx; /* 保证表格宽度足够，容纳加宽的建议列和新增的队友列 */
 }
 
 .tr {
@@ -141,6 +141,7 @@
 }
 
 .date { width: 200rpx; }
+.teammate { width: 150rpx; }
 .subject { width: 120rpx; }
 .content { width: 180rpx; }
 .score { width: 130rpx; }

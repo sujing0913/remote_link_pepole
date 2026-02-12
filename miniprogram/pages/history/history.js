@@ -22,21 +22,20 @@ Page({
     // 从缓存中获取当前用户信息
     let currentUser = wx.getStorageSync('currentUser');
     
-    // 如果没有缓存，说明未授权，跳转回授权页
+    // 如果没有缓存，跳转回首页初始化
     if (!currentUser) {
-      wx.reLaunch({ url: '/pages/auth/auth' });
+      wx.reLaunch({ url: '/pages/index/index' });
       return;
     }
 
-    // 强行从数据库刷新一次用户信息，确保角色和昵称是最新的，解决组织者权限同步延迟问题
+    // 刷新用户信息，确保团队信息最新
     try {
       const userRes = await db.collection('users').where({ _openid: currentUser.openId }).get();
       if (userRes.data.length > 0) {
         const latestInfo = userRes.data[0];
-        // 更新缓存
-        currentUser.role = latestInfo.role;
+        currentUser.teamId = latestInfo.teamId;
+        currentUser.teamName = latestInfo.teamName;
         currentUser.nickName = latestInfo.nickName;
-        currentUser.avatarUrl = latestInfo.avatarUrl;
         wx.setStorageSync('currentUser', currentUser);
       }
     } catch (e) {
@@ -48,44 +47,30 @@ Page({
       userRole: currentUser.role
     });
 
-    if (currentUser.role === 'organizer') {
-      await this.loadParticipantList(currentUser.openId);
-    }
+    // 加载同团队成员
+    await this.loadParticipantList(currentUser.teamId);
 
     this.generateYearMonthRange();
     this.fetchRecords();
   },
 
-  async loadParticipantList(organizerOpenId) {
+  async loadParticipantList(teamId) {
     const that = this;
     try {
-      const bindingRes = await db.collection('bindings')
-        .where({ supervisorOpenId: organizerOpenId })
-        .get();
+      // 根据 teamId 查询所有成员
+      const userRes = await db.collection('users').where({ teamId: teamId }).get();
       
-      const participantOpenIds = bindingRes.data.map(item => item.puncherOpenId);
-      const userPromises = participantOpenIds.map(id => 
-        db.collection('users').where({ _openid: id }).get()
-      );
-      const participantLists = await Promise.all(userPromises);
-      
-      // 获取自己的信息
-      const myInfoRes = await db.collection('users').where({ _openid: organizerOpenId }).get();
-      const myInfo = myInfoRes.data[0] || { nickName: '我', _openid: organizerOpenId };
-      const myDisplayInfo = { ...myInfo, nickName: myInfo.nickName };
-
       const participantList = [
-        myDisplayInfo,
-        { nickName: '全部打卡人' },
-        ...participantLists.flatMap(res => res.data)
+        { nickName: '全部队友' },
+        ...userRes.data
       ];
 
       that.setData({ 
         participantList,
-        selectedParticipantIndex: 0 // 默认选中第一个（即当前用户）
+        selectedParticipantIndex: 0
       });
     } catch (err) {
-      console.error('加载打卡人列表失败', err);
+      console.error('加载队友列表失败', err);
     }
   },
 
@@ -129,25 +114,21 @@ Page({
         currentYear: year
       });
 
-      // 如果是组织者
-      if (this.data.userRole === 'organizer') {
-        if (this.data.selectedParticipantIndex > 0) {
-          query.puncherOpenId = this.data.participantList[this.data.selectedParticipantIndex]._openid;
-        } else {
-          // 全部打卡人：包含自己和所有下属
-          const allRelevantOpenIds = this.data.participantList
-            .filter(p => p._openid)
-            .map(p => p._openid);
-          
-          if (allRelevantOpenIds.length > 0) {
-            query.puncherOpenId = _.in(allRelevantOpenIds);
-          } else {
-            query.puncherOpenId = this.data.currentUser.openId;
-          }
-        }
+      // 基于团队隔离查询
+      if (this.data.selectedParticipantIndex > 0) {
+        // 选中特定队员
+        query.puncherOpenId = this.data.participantList[this.data.selectedParticipantIndex]._openid;
       } else {
-        // 普通打卡人只能看到自己的
-        query.puncherOpenId = this.data.currentUser.openId;
+        // 全部队友：查询该团队下所有人的记录
+        const allTeamOpenIds = this.data.participantList
+          .filter(p => p._openid)
+          .map(p => p._openid);
+        
+        if (allTeamOpenIds.length > 0) {
+          query.puncherOpenId = _.in(allTeamOpenIds);
+        } else {
+          query.puncherOpenId = this.data.currentUser.openId;
+        }
       }
 
       const res = await db.collection('check_ins')
@@ -281,8 +262,13 @@ Page({
     }
 
     try {
-      await db.collection('check_ins').doc(id).update({
-        data: { score: score }
+      await wx.cloud.callFunction({
+        name: 'registerUser',
+        data: {
+          action: 'updateCheckIn',
+          checkInId: id,
+          score: score
+        }
       });
       // 静默更新本地数据统计，或者重新拉取数据
       this.fetchRecords();
@@ -298,8 +284,13 @@ Page({
     const suggestion = e.detail.value;
 
     try {
-      await db.collection('check_ins').doc(id).update({
-        data: { suggestion: suggestion }
+      await wx.cloud.callFunction({
+        name: 'registerUser',
+        data: {
+          action: 'updateCheckIn',
+          checkInId: id,
+          suggestion: suggestion
+        }
       });
       // 无需全量更新，仅更新本地展示
       // 但为了保证统计（如果建议影响统计的话，目前不影响）也可以fetch

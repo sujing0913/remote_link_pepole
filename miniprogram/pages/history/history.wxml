@@ -9,10 +9,10 @@
         </view>
       </picker>
     </view>
-    <view wx:if="{{userRole === 'organizer'}}" class="filter-item">
-      <text>打卡人：</text>
+    <view class="filter-item">
+      <text>队友：</text>
       <picker mode="selector" range="{{participantList}}" range-key="nickName" value="{{selectedParticipantIndex}}" bindchange="onParticipantFilterChange">
-        <view class="picker">{{selectedParticipantIndex < participantList.length ? participantList[selectedParticipantIndex].nickName : '全部打卡人'}}</view>
+        <view class="picker">{{selectedParticipantIndex < participantList.length ? participantList[selectedParticipantIndex].nickName : '全部队友'}}</view>
       </picker>
     </view>
   </view>
@@ -53,6 +53,7 @@
           <view class="table">
             <view class="tr th">
               <view class="td date">日期/时间</view>
+              <view class="td teammate">队友</view>
               <view class="td subject">科目</view>
               <view class="td content">内容</view>
               <view class="td score">评分</view>
@@ -63,25 +64,16 @@
                 <text class="d">{{item.dateStr}}</text>
                 <text class="t">{{item.timeStr}}</text>
               </view>
+              <view class="td teammate">{{item.participantNickName}}</view>
               <view class="td subject">{{item.subject}}</view>
               <view class="td content">
                 <text class="link" bindtap="viewMedia" data-item="{{item}}">查看{{item.mediaType === 'video' ? '视频' : '照片'}}</text>
               </view>
               <view class="td score">
-                <block wx:if="{{userRole === 'organizer'}}">
-                  <input class="edit-input" type="number" value="{{item.score === -1 ? '' : item.score}}" placeholder="评分" bindblur="onScoreBlur" data-id="{{item._id}}" />
-                </block>
-                <block wx:else>
-                  {{item.score === -1 ? '未评分' : item.score}}
-                </block>
+                <input class="edit-input" type="number" value="{{item.score === -1 ? '' : item.score}}" placeholder="评分" bindblur="onScoreBlur" data-id="{{item._id}}" />
               </view>
               <view class="td suggest">
-                <block wx:if="{{userRole === 'organizer'}}">
-                  <input class="edit-input" value="{{item.suggestion}}" placeholder="输入建议" bindblur="onSuggestBlur" data-id="{{item._id}}" />
-                </block>
-                <block wx:else>
-                  {{item.suggestion || '-'}}
-                </block>
+                <input class="edit-input" value="{{item.suggestion}}" placeholder="输入建议" bindblur="onSuggestBlur" data-id="{{item._id}}" />
               </view>
             </view>
           </view>

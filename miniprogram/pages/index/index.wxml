@@ -1,9 +1,19 @@
 <view class="container">
   <!-- 顶部查询区域 -->
   <view class="header">
-    <!-- 第一行：今日打卡状态 + 监管人/打卡人信息 -->
-    <view class="first-row">
-      <!-- 今日打卡区块 -->
+    <!-- 第一行：用户 + 团队 + 历史记录 -->
+    <view class="first-row-v2">
+      <view class="user-team-info-inline">
+        <view class="info-item" bindtap="showProfileModal">
+          <text class="label">队友：</text>
+          <text class="value link">{{currentUserNickName || '未登录'}}</text>
+        </view>
+      </view>
+      <view class="history-link" bindtap="goToHistory">历史记录 ></view>
+    </view>
+
+    <!-- 第二行：今日打卡状态 + 队友选择 -->
+    <view class="second-row-v2">
       <view class="info-block today-block">
         <text>
           <text class="label">今日打卡：</text>
@@ -11,30 +21,28 @@
         </text>
       </view>
       
-      <!-- 分隔符 -->
       <view class="separator">|</view>
       
-      <!-- 打卡人选择下拉框 -->
       <view class="info-block participant-block">
-        <text>当前用户：</text>
+        <text>队友：</text>
         <picker mode="selector" range="{{participantList}}" range-key="nickName" value="{{selectedParticipantIndex}}" bindchange="onParticipantChange">
-          <view class="picker">{{selectedParticipantIndex < participantList.length ? participantList[selectedParticipantIndex].nickName : '选择用户'}}</view>
+          <view class="picker">{{selectedParticipantIndex < participantList.length ? participantList[selectedParticipantIndex].nickName : '选择队友'}}</view>
         </picker>
       </view>
     </view>
 
-    <!-- 第二行：日期星期 + 身份信息 + 历史记录 -->
-    <view class="second-row">
+    <!-- 第三行：日期星期 + 邀请队友 -->
+    <view class="third-row-v2">
       <view class="date-info">
         <text>{{currentDateStr}}</text>
       </view>
-      <view class="history-link" bindtap="goToHistory">历史打卡记录 ></view>
-    </view>
-
-    <!-- 第三行：组织者信息 -->
-    <view class="third-row">
-      <view class="supervisor-info">
-        <text>组织者：{{supervisorNickName || '加载中...'}}</text>
+      <view class="invite-section">
+        <button wx:if="{{isProfileInitial}}" class="invite-btn-small" bindtap="showProfileModal">
+          邀请队友
+        </button>
+        <button wx:else class="invite-btn-small" open-type="share">
+          邀请队友
+        </button>
       </view>
     </view>
   </view>
@@ -56,9 +64,35 @@
       <button class="punch-btn" bindtap="onPunch">
         <text>打卡</text>
       </button>
-      <button class="invite-btn" open-type="share">
-        <text>邀请打卡人</text>
-      </button>
+    </view>
+  </view>
+
+  <!-- 统一资料编辑/注册弹窗 -->
+  <view class="modal-mask" wx:if="{{showProfileModal}}">
+    <view class="modal-content">
+      <view class="modal-header">完善/修改资料</view>
+      <view class="modal-body">
+        <view class="avatar-section">
+          <button class="avatar-wrapper" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+            <image class="avatar" src="{{tempAvatarUrl}}"></image>
+          </button>
+          <text class="avatar-tip">点击设置头像</text>
+        </view>
+        
+        <view class="input-group">
+          <text class="label">用户名</text>
+          <input type="nickname" class="modal-input" placeholder="请输入昵称" bindblur="onNicknameBlur" value="{{tempNickName}}" />
+        </view>
+        
+        <view class="input-group">
+          <text class="label">团队名称</text>
+          <input type="text" class="modal-input" placeholder="请输入团队名称" bindinput="onTeamNameInput" value="{{tempTeamName}}" />
+        </view>
+      </view>
+      <view class="modal-footer">
+        <button class="cancel-btn" bindtap="hideProfileModal">取消</button>
+        <button class="confirm-btn" bindtap="saveProfile">{{isProfileInitial ? '注册' : '保存'}}</button>
+      </view>
     </view>
   </view>
 </view>
