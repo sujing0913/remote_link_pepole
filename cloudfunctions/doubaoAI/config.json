@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "openapi": []
+  },
+  "envVariables": {
+    "ARK_API_KEY": "fd9a07e4-f689-44d4-8849-450390fc3415",
+    "DOUBAO_BASE_URL": "https://ark.cn-beijing.volces.com/api/v3",
+    "DOUBAO_MODEL": "ep-20260226160039-fv5qm"
+  }
+}
