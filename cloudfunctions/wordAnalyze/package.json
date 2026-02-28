@@ -1,0 +1,9 @@
+{
+  "name": "wordAnalyze",
+  "version": "1.0.0",
+  "description": "Analyze word text and return word/meaning/example/pronunciation audio url",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "^3.0.1"
+  }
+}
