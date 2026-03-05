@@ -1,7 +1,13 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/history/history"
+    "pages/bind/bind",
+    "pages/history/history",
+    "pages/me/me",
+    "pages/notifications/notifications",
+    "pages/toolbox/toolbox",
+    "pages/scanWord/scanWord",
+    "pages/wordbook/wordbook"
   ],
   "window": {
     "backgroundColor": "#F6F6F6",

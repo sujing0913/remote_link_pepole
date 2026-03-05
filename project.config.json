@@ -42,7 +42,11 @@
     "minifyWXML": true,
     "showES6CompileOption": false,
     "useCompilerPlugins": [],
-    "minifyJS": true
+    "minifyJS": true,
+    "ignoreDevUnusedFiles": true
+  },
+  "cloudFunctionEngine": {
+    "timeout": 60
   },
   "appid": "wx483034198a246774",
   "projectname": "remote-link-people",

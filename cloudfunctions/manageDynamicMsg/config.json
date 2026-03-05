@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "openapi": [
-      "updatableMessage.createActivityId",
-      "updatableMessage.setUpdatableMsg"
-    ]
-  }
-}

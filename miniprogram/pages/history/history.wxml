@@ -1,19 +1,30 @@
 <view class="history-container">
   <!-- 筛选器 -->
   <view class="filters">
-    <view class="filter-item">
-      <text>日期：</text>
-      <picker mode="multiSelector" range="{{yearMonthRange}}" value="{{selectedYearMonth}}" bindchange="onYearMonthChange">
-        <view class="picker">
-          {{yearMonthRange[0][selectedYearMonth[0]]}}年{{yearMonthRange[1][selectedYearMonth[1]] === '全部' ? '全部月份' : yearMonthRange[1][selectedYearMonth[1]] + '月'}}
-        </view>
-      </picker>
-    </view>
-    <view class="filter-item">
-      <text>队友：</text>
-      <picker mode="selector" range="{{participantList}}" range-key="nickName" value="{{selectedParticipantIndex}}" bindchange="onParticipantFilterChange">
-        <view class="picker">{{selectedParticipantIndex < participantList.length ? participantList[selectedParticipantIndex].nickName : '全部队友'}}</view>
-      </picker>
+    <view class="filter-row">
+      <view class="filter-item">
+        <text>日期：</text>
+        <picker mode="multiSelector" range="{{yearMonthRange}}" value="{{selectedYearMonth}}" bindchange="onYearMonthChange">
+          <view class="picker">
+            {{yearMonthRange[0][selectedYearMonth[0]]}}年{{yearMonthRange[1][selectedYearMonth[1]] === '全部' ? '全部月份' : yearMonthRange[1][selectedYearMonth[1]] + '月'}}
+          </view>
+        </picker>
+      </view>
+
+      <view class="filter-item">
+        <text>科目：</text>
+        <picker mode="selector" range="{{subjectRange}}" value="{{selectedSubjectIndex}}" bindchange="onSubjectChange">
+          <view class="picker">{{subjectRange[selectedSubjectIndex]}}</view>
+        </picker>
+      </view>
+
+      <!-- 家长端：孩子筛选（无绑定则显示“无”） -->
+      <view class="filter-item" wx:if="{{isParent}}">
+        <text>孩子：</text>
+        <picker mode="selector" range="{{childOptions}}" range-key="name" value="{{selectedChildIndex}}" bindchange="onChildChange">
+          <view class="picker">{{childOptions[selectedChildIndex].name}}</view>
+        </picker>
+      </view>
     </view>
   </view>
 
@@ -40,47 +51,170 @@
     </view>
   </view>
 
-  <!-- 历史记录表格 -->
-  <view class="history-list">
-    <block wx:for="{{groupedRecords}}" wx:key="month" wx:for-item="monthGroup">
-      <view class="month-group">
-        <view class="month-header" bindtap="toggleMonth" data-month="{{monthGroup.month}}">
-          <text class="month-title">{{monthGroup.month}} ({{monthGroup.records.length}}次)</text>
-          <text class="arrow {{monthGroup.collapsed ? '' : 'expanded'}}">></text>
+  <!-- 按月分组显示 -->
+  <view class="month-groups">
+    <block wx:for="{{monthGroups}}" wx:key="monthKey" wx:for-item="group">
+      <!-- 月份标题栏 -->
+      <view class="month-header" bindtap="toggleMonth" data-month-key="{{group.monthKey}}">
+        <view class="month-title">
+          <text class="expand-icon {{group.expanded ? 'expanded' : ''}}">{{group.expanded ? '▼' : '▶'}}</text>
+          <text>{{group.monthName}}</text>
+          <text class="month-count">({{group.count}}条记录)</text>
+        </view>
+        <view class="month-summary">
+          <text class="month-score">得分：{{group.totalScore}}</text>
+        </view>
+      </view>
+      
+      <!-- 月份表格内容 -->
+      <view class="month-table {{group.expanded ? 'expanded' : 'collapsed'}}">
+        <!-- 表格头部 -->
+        <view class="table-header">
+          <view class="table-col-subject">科目</view>
+          <view class="table-col-datetime">日期/时间</view>
+          <view class="table-col-score">得分</view>
+          <view class="table-col-media">内容</view>
+          <view class="table-col-result">评价</view>
+          <view class="table-col-suggest">建议</view>
         </view>
         
-        <view class="table-container" hidden="{{monthGroup.collapsed}}">
-          <view class="table">
-            <view class="tr th">
-              <view class="td date">日期/时间</view>
-              <view class="td teammate">队友</view>
-              <view class="td subject">科目</view>
-              <view class="td content">内容</view>
-              <view class="td score">评分</view>
-              <view class="td suggest">建议</view>
+        <!-- 表格内容 -->
+        <view class="table-body">
+          <block wx:for="{{group.records}}" wx:key="_id" wx:for-item="item">
+            <view class="table-row">
+              <view class="table-col-subject">{{item.subject}}</view>
+              <view class="table-col-datetime">
+                <text>{{item.dateTimeStr}}</text>
+                <text wx:if="{{item.isToday}}" class="today-tag">（今天）</text>
+              </view>
+              <view class="table-col-score">
+                <text class="score-value {{item.score >= 8 ? 'score-green' : (item.score >= 6 ? 'score-orange' : 'score-red')}}">
+                  {{item.score === -1 ? '-' : item.score}}
+                </text>
+              </view>
+              <view class="table-col-media">
+                <button class="action-btn media-btn" bindtap="viewMedia" data-item="{{item}}">
+                  <text class="btn-icon">{{item.mediaType === 'video' ? '🎬' : '🖼️'}}</text>
+                </button>
+              </view>
+              <view class="table-col-result">
+                <button class="action-btn result-btn" wx:if="{{item.checkResults && item.checkResults.length > 0}}" bindtap="viewCheckResult" data-item="{{item}}">
+                  <text class="btn-icon">📋</text>
+                </button>
+                <text class="no-data" wx:else>-</text>
+              </view>
+              <view class="table-col-suggest">
+                <button class="action-btn suggest-btn" wx:if="{{item.suggestion}}" bindtap="viewSuggestion" data-item="{{item}}">
+                  <text class="btn-icon">💡</text>
+                </button>
+                <text class="no-data" wx:else>-</text>
+              </view>
             </view>
-            <view class="tr" wx:for="{{monthGroup.records}}" wx:key="_id">
-              <view class="td date">
-                <text class="d">{{item.dateStr}}</text>
-                <text class="t">{{item.timeStr}}</text>
-              </view>
-              <view class="td teammate">{{item.participantNickName}}</view>
-              <view class="td subject">{{item.subject}}</view>
-              <view class="td content">
-                <text class="link" bindtap="viewMedia" data-item="{{item}}">查看{{item.mediaType === 'video' ? '视频' : '照片'}}</text>
-              </view>
-              <view class="td score">
-                <input class="edit-input" type="number" value="{{item.score === -1 ? '' : item.score}}" placeholder="评分" bindblur="onScoreBlur" data-id="{{item._id}}" />
-              </view>
-              <view class="td suggest">
-                <input class="edit-input" value="{{item.suggestion}}" placeholder="输入建议" bindblur="onSuggestBlur" data-id="{{item._id}}" />
-              </view>
-            </view>
-          </view>
+          </block>
         </view>
       </view>
     </block>
   </view>
   
-  <view wx:if="{{groupedRecords.length === 0}}" class="empty">暂无打卡记录</view>
+  <view wx:if="{{records.length === 0}}" class="empty">
+    {{isParent ? '暂无绑定孩子打卡记录' : '暂无打卡记录'}}
+  </view>
+
+  <!-- 检查结果弹框 -->
+  <view class="check-result-modal" wx:if="{{showCheckResultModal}}" bindtap="closeCheckResultModal">
+    <view class="check-result-content" catchtap="void" bindtap="void">
+      <view class="check-result-header">
+        <text class="check-result-title">📋 检查结果详情</text>
+      </view>
+      <scroll-view class="check-result-body" scroll-y="true">
+        <view class="ai-result-content">
+          <!-- 得分显示 -->
+          <view class="result-header">
+            <view class="score-display {{scoreClass}}">
+              <text class="score-number">{{score}}</text>
+              <text class="score-label">分</text>
+            </view>
+          </view>
+          
+          <!-- 识别内容 -->
+          <view class="result-section" wx:if="{{recognizedContent || totalQuestions > 0}}">
+            <view class="section-header">
+              <text class="section-icon">📝</text>
+              <text class="section-title">识别内容</text>
+            </view>
+            <!-- 英语单词打卡特殊显示格式 -->
+            <view class="word-list" wx:if="{{wordList && wordList.length > 0}}">
+              <view class="word-item" wx:for="{{wordList}}" wx:key="index" wx:for-item="word">
+                <text class="word-cn">{{word.cn}}</text>
+                <text class="word-arrow">→</text>
+                <text class="word-en {{word.isCorrect ? 'correct' : 'wrong'}}">{{word.en}}</text>
+                <text class="word-status" wx:if="{{!word.isCorrect}}">({{word.correct}})</text>
+              </view>
+            </view>
+            <!-- 普通识别内容显示 -->
+            <view class="content-box highlighted" wx:if="{{recognizedContent && (!wordList || wordList.length === 0)}}">{{recognizedContent}}</view>
+            <view class="question-stats" wx:if="{{totalQuestions > 0}}">
+              <text class="stat-item">共 {{totalQuestions}} 道题</text>
+              <text class="stat-item correct">正确 {{correctQuestions}} 道</text>
+              <text class="stat-item wrong">错误 {{totalQuestions - correctQuestions}} 道</text>
+            </view>
+          </view>
+          
+          <!-- 判断结果 -->
+          <view class="result-section" wx:if="{{aiAnalysis}}">
+            <view class="section-header">
+              <text class="section-icon">{{score >= 6 ? '✅' : '⚠️'}}</text>
+              <text class="section-title">判断结果</text>
+            </view>
+            <view class="judgment-box {{score >= 6 ? 'correct' : 'incorrect'}}">
+              <text class="judgment-text">{{score >= 8 ? '✓ 非常棒！' : (score >= 6 ? '✓ 还不错' : '✗ 需要加油')}}</text>
+              <view class="judgment-detail">{{aiAnalysis}}</view>
+            </view>
+          </view>
+          
+          <!-- 检查结果详情 -->
+          <view class="result-section" wx:if="{{checkResults && checkResults.length > 0}}">
+            <view class="section-header">
+              <text class="section-icon">📋</text>
+              <text class="section-title">检查结果详情</text>
+            </view>
+            <view class="check-result-list">
+              <block wx:for="{{checkResults}}" wx:key="index" wx:for-item="result">
+                <view class="check-result-item {{result.is_correct ? 'correct' : 'wrong'}}">
+                  <view class="check-item-header">
+                    <text class="check-item-icon">{{result.is_correct ? '✅' : '❌'}}</text>
+                    <text class="check-item-status">{{result.is_correct ? '正确' : '错误'}}</text>
+                  </view>
+                  <view class="check-item-content">
+                    <view class="check-item-row">
+                      <text class="check-label">题目：</text>
+                      <text class="check-value">{{result.question}}</text>
+                    </view>
+                    <view class="check-item-row">
+                      <text class="check-label">你的答案：</text>
+                      <text class="check-value {{result.is_correct ? '' : 'wrong-answer'}}">{{result.user_answer}}</text>
+                    </view>
+                    <view class="check-item-row" wx:if="{{!result.is_correct}}">
+                      <text class="check-label">正确答案：</text>
+                      <text class="check-value correct-answer">{{result.correct_answer}}</text>
+                    </view>
+                  </view>
+                </view>
+              </block>
+            </view>
+          </view>
+          
+          <!-- 学习建议 -->
+          <view class="result-section" wx:if="{{suggestion}}">
+            <view class="section-header">
+              <text class="section-icon">💡</text>
+              <text class="section-title">学习建议</text>
+            </view>
+            <view class="suggestion-box">{{suggestion}}</view>
+          </view>
+        </view>
+      </scroll-view>
+      <button class="check-result-close-btn" bindtap="closeCheckResultModal">关闭</button>
+    </view>
+  </view>
 </view>

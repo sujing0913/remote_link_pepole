@@ -1,0 +1,30 @@
+# 依赖目录
+node_modules/
+cloudfunctions/*/node_modules/
+
+# 小程序临时文件
+miniprogram/.tea/
+miniprogram/.tmp/
+
+# 云函数配置（包含敏感信息）
+cloudfunctions/aiEvaluate/index.js
+
+# 日志文件
+logs/
+*.log
+npm-debug.log*
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# IDE 配置
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 环境变量
+.env
+.env.local

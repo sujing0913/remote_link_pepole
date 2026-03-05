@@ -1,0 +1,9 @@
+{
+  "name": "ensureParentBindCode",
+  "version": "1.0.0",
+  "description": "确保家长拥有永久6位绑定码（如不存在则生成）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "bindToParent",
+  "version": "1.0.0",
+  "description": "孩子输入家长6位绑定码进行绑定（可多对多），支持重复绑定幂等",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

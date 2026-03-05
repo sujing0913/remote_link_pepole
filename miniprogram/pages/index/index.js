@@ -8,27 +8,34 @@ Page({
     totalCount: 0,
     isTodayDone: false,
     loading: false,
-    // 新增数据
     subjects: ['语文', '数学', '英语'],
     selectedSubjectIndex: 2, // 默认英语
-    participantList: [], // 打卡人列表（包含自己）
-    selectedParticipantIndex: 0,
-    currentParticipantOpenId: '', // 当前选中的打卡人openId
-    currentUserOpenId: '', // 当前登录用户的openId
-    currentUserNickName: '', // 当前登录用户的昵称
+    currentUserOpenId: '', // 当前登录用户的 openId
     currentDateStr: '', // 当前日期字符串
-    teamId: '', // 团队ID
-    teamName: '', // 团队名称
-    
-    // 编辑弹窗相关
-    showProfileModal: false,
-    isProfileInitial: true, // 是否为初始未修改状态
-    tempAvatarUrl: 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0',
-    tempNickName: '',
-    tempTeamName: '',
-    
-    activityId: '' // 动态消息ID
+    // 本次打卡数据
+    latestPunch: null,
+    // AI 评分弹框数据
+    showAIResultModal: false,
+    aiResultHtml: '',
+    aiScore: 0,
+    aiScoreClass: 'score-low',
+    aiRecognizedContent: '',
+    aiTotalQuestions: 0,
+    aiCorrectQuestions: 0,
+    aiJudgment: '',
+    aiSuggestion: '',
+    aiCheckResults: [],
+    fileType: '',
+    fileID: '',
+    recordId: '', // 当前打卡记录 ID
+    // AI 评分加载动画数据
+    showAILoading: false,
+    currentAnimal: '🐱', // 当前动物头像
+    animalTimer: null // 动物头像切换定时器
   },
+
+  // 可爱的小动物头像列表
+  animalAvatars: ['🐱', '🐶', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🦆', '🦅', '🦉', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞', '🐜', '🦗', '🕷️', '🦂'],
 
   onLoad: async function(options) {
     // 启用分享功能
@@ -37,60 +44,21 @@ Page({
       menus: ['shareAppMessage', 'shareTimeline']
     });
 
-    // 优先处理加入团队逻辑（如果带了 teamId 参数）
-    const targetTeamId = options.teamId || options.inviterOpenId; // 兼容旧版参数名
-
     try {
       wx.showLoading({ title: '初始化中...' });
+      
+      // 获取当前用户 OpenId
       const { result: user } = await wx.cloud.callFunction({ name: 'getUserInfo' });
       
       if (user && user.openId) {
-        let finalTeamId = user.teamId;
-        let finalTeamName = user.teamName;
-
-        // 如果是通过邀请进入且团队ID不同，则自动加入新团队 (改用云函数以规避权限问题)
-        if (targetTeamId && targetTeamId !== user.teamId) {
-          // 获取新团队的名称
-          const teamInfo = await db.collection('users').where({ _openid: targetTeamId }).get();
-          if (teamInfo.data.length > 0) {
-            finalTeamName = teamInfo.data[0].teamName;
-          }
-          finalTeamId = targetTeamId;
-
-          await wx.cloud.callFunction({
-            name: 'registerUser',
-            data: { 
-              teamId: finalTeamId,
-              teamName: finalTeamName
-            }
-          });
-          wx.showToast({ title: '已加入新团队', icon: 'success' });
-        }
-
-        const userInfo = { ...user, teamId: finalTeamId, teamName: finalTeamName };
-        wx.setStorageSync('currentUser', userInfo);
-
-        // 判断是否为初始状态 (基于 isProfileSet 字段)
-        const isInitial = !user.isProfileSet;
-
         this.setData({
-          isRegistered: true,
-          isProfileInitial: isInitial,
-          currentUserOpenId: user.openId,
-          currentUserNickName: user.nickName,
-          teamId: finalTeamId,
-          teamName: finalTeamName,
-          tempAvatarUrl: user.avatarUrl || this.data.tempAvatarUrl,
-          tempNickName: user.nickName,
-          tempTeamName: finalTeamName
+          currentUserOpenId: user.openId
         });
-
-        this.initDates();
-        await this.loadTeamMembers(finalTeamId);
-        this.fetchActivityId();
-        this.checkTodayStatus();
-        this.queryCount();
       }
+      
+      this.initDates();
+      this.checkTodayStatus();
+      this.queryCount();
     } catch (e) {
       console.error('初始化失败', e);
       this.initDates();
@@ -99,10 +67,9 @@ Page({
     }
   },
 
-
-
   onShow: function() {
     this.checkTodayStatus();
+    this.fetchLatestPunch();
   },
 
   initDates: function() {
@@ -144,12 +111,12 @@ Page({
       const start = new Date(this.data.startDate + ' 00:00:00');
       const end = new Date(this.data.endDate + ' 23:59:59');
       const subject = this.data.subjects[this.data.selectedSubjectIndex];
-      const currentParticipantOpenId = this.data.currentParticipantOpenId;
+      const currentUserOpenId = this.data.currentUserOpenId;
 
       const query = {
         createTime: _.gte(start).and(_.lte(end)),
         subject: subject,
-        puncherOpenId: currentParticipantOpenId
+        puncherOpenId: currentUserOpenId
       };
 
       const res = await db.collection('check_ins').where(query).count();
@@ -170,13 +137,13 @@ Page({
     const start = new Date(now.setHours(0, 0, 0, 0));
     const end = new Date(now.setHours(23, 59, 59, 999));
     const subject = this.data.subjects[this.data.selectedSubjectIndex];
-    const currentParticipantOpenId = this.data.currentParticipantOpenId;
+    const currentUserOpenId = this.data.currentUserOpenId;
 
     try {
       const query = {
         createTime: _.gte(start).and(_.lte(end)),
         subject: subject,
-        puncherOpenId: currentParticipantOpenId
+        puncherOpenId: currentUserOpenId
       };
 
       const res = await db.collection('check_ins').where(query).count();
@@ -189,9 +156,209 @@ Page({
     }
   },
 
+  // 获取本次打卡记录（最新一条）
+  fetchLatestPunch: async function() {
+    try {
+      const subject = this.data.subjects[this.data.selectedSubjectIndex];
+      const currentUserOpenId = this.data.currentUserOpenId;
+
+      const res = await db.collection('check_ins')
+        .where({
+          subject: subject,
+          puncherOpenId: currentUserOpenId
+        })
+        .orderBy('createTime', 'desc')
+        .limit(1)
+        .get();
+
+      if (res.data && res.data.length > 0) {
+        const item = res.data[0];
+        // 格式化时间
+        const createTime = new Date(item.createTime);
+        const timeStr = `${(createTime.getMonth() + 1).toString().padStart(2, '0')}-${createTime.getDate().toString().padStart(2, '0')} ${createTime.getHours().toString().padStart(2, '0')}:${createTime.getMinutes().toString().padStart(2, '0')}`;
+        
+        // 获取图片临时 URL
+        let mediaUrl = item.mediaUrl;
+        if (item.mediaType === 'image' && item.mediaUrl.startsWith('cloud://')) {
+          try {
+            const tempUrlRes = await wx.cloud.getTempFileURL({ fileList: [item.mediaUrl] });
+            if (tempUrlRes.fileList && tempUrlRes.fileList.length > 0) {
+              mediaUrl = tempUrlRes.fileList[0].tempFileURL;
+            }
+          } catch (e) {
+            console.error('获取临时 URL 失败', e);
+          }
+        }
+
+        this.setData({
+          latestPunch: {
+            ...item,
+            timeStr: timeStr,
+            mediaUrl: mediaUrl
+          }
+        });
+      } else {
+        this.setData({
+          latestPunch: null
+        });
+      }
+    } catch (err) {
+      console.error('获取最新打卡记录失败', err);
+    }
+  },
+
+  // 查看本次打卡的媒体文件
+  viewLatestMedia: function() {
+    const item = this.data.latestPunch;
+    if (!item) return;
+
+    if (item.mediaType === 'image') {
+      wx.previewImage({
+        urls: [item.mediaUrl],
+        current: item.mediaUrl
+      });
+    } else if (item.mediaType === 'video') {
+      if (wx.previewMedia) {
+        wx.previewMedia({
+          sources: [{
+            url: item.mediaUrl,
+            type: 'video'
+          }]
+        });
+      } else {
+        wx.showToast({ title: '请升级微信查看视频', icon: 'none' });
+      }
+    }
+  },
+
+  // 查看最新打卡内容（显示实际打卡的照片或视频）
+  viewLatestMediaOrTip: function() {
+    const item = this.data.latestPunch;
+    
+    if (!item) {
+      wx.showToast({ title: '今日还未打卡', icon: 'none' });
+      return;
+    }
+    
+    // 查看实际的媒体文件（照片或视频）
+    if (item.mediaType === 'image') {
+      wx.previewImage({
+        urls: [item.mediaUrl],
+        current: item.mediaUrl
+      });
+    } else if (item.mediaType === 'video') {
+      if (wx.previewMedia) {
+        wx.previewMedia({
+          sources: [{
+            url: item.mediaUrl,
+            type: 'video'
+          }]
+        });
+      } else {
+        wx.showToast({ title: '请升级微信查看视频', icon: 'none' });
+      }
+    }
+  },
+
+  // 查看本次打卡的建议
+  viewLatestSuggestion: function() {
+    const item = this.data.latestPunch;
+    if (!item || !item.suggestion) return;
+
+    wx.showModal({
+      title: '💡 改进建议',
+      content: item.suggestion,
+      showCancel: false,
+      confirmText: '知道了',
+      confirmColor: '#07c160'
+    });
+  },
+
+  // 查看本次打卡的建议或提示未打卡
+  viewLatestSuggestionOrTip: function() {
+    const item = this.data.latestPunch;
+    if (!item) {
+      wx.showToast({ title: '还未打卡', icon: 'none' });
+      return;
+    }
+    if (!item.suggestion) {
+      wx.showToast({ title: '暂无建议', icon: 'none' });
+      return;
+    }
+    this.viewLatestSuggestion();
+  },
+
+  // 查看本次打卡的检查结果
+  viewLatestCheckResult: function() {
+    const item = this.data.latestPunch;
+    if (!item || !item.checkResults || item.checkResults.length === 0) return;
+
+    // 复用历史记录的检查结果弹框逻辑
+    this.setData({
+      score: item.score || 0,
+      recognizedContent: item.recognizedContent || '',
+      totalQuestions: item.totalQuestions || 0,
+      correctQuestions: item.correctQuestions || 0,
+      aiAnalysis: item.aiAnalysis || item.judgment || '',
+      suggestion: item.suggestion || '',
+      checkResults: item.checkResults || [],
+      showCheckResultModal: true
+    });
+  },
+
+  // 查看本次打卡的检查结果或提示未打卡
+  viewLatestCheckResultOrTip: function() {
+    const item = this.data.latestPunch;
+    if (!item) {
+      wx.showToast({ title: '还未打卡', icon: 'none' });
+      return;
+    }
+    if (!item.checkResults || item.checkResults.length === 0) {
+      wx.showToast({ title: '暂无检查结果', icon: 'none' });
+      return;
+    }
+    this.viewLatestCheckResult();
+  },
+
+  // 关闭检查结果弹框
+  closeCheckResultModal: function() {
+    this.setData({
+      showCheckResultModal: false
+    });
+  },
+
   goToHistory: function() {
+    // 传递当前选中的科目索引到历史记录页面
     wx.navigateTo({
-      url: '/pages/history/history'
+      url: '/pages/history/history?selectedSubjectIndex=' + this.data.selectedSubjectIndex
+    });
+  },
+
+  // 跳转到我的页面
+  goToMe: function() {
+    wx.navigateTo({
+      url: '/pages/me/me'
+    });
+  },
+
+  // 跳转到工具箱页面
+  goToToolbox: function() {
+    wx.navigateTo({
+      url: '/pages/toolbox/toolbox'
+    });
+  },
+
+  // 跳转到单词本页面
+  goToWordbook: function() {
+    wx.navigateTo({
+      url: '/pages/wordbook/wordbook'
+    });
+  },
+
+  // 跳转到绑定监督人页面
+  goToBind: function() {
+    wx.navigateTo({
+      url: '/pages/bind/bind'
     });
   },
 
@@ -236,8 +403,8 @@ Page({
 
   saveToDatabase: function(fileID, fileType, subject) {
     const that = this;
-    const currentUser = wx.getStorageSync('currentUser');
-    const openid = currentUser ? currentUser.openId : this.data.currentParticipantOpenId;
+    const currentUserOpenId = this.data.currentUserOpenId;
+    
     db.collection('check_ins').add({
       data: {
         mediaUrl: fileID,
@@ -246,41 +413,40 @@ Page({
         score: -1, // -1 表示未评分
         suggestion: '',
         subject: subject,
-        puncherOpenId: openid
+        puncherOpenId: currentUserOpenId
       },
       success: async res => {
-        wx.hideLoading();
-        wx.showToast({ title: '打卡完成并通知队长', icon: 'success' });
-        
-        // 调用云函数发送通知
-        try {
-          await wx.cloud.callFunction({
-            name: 'sendNotification',
-            data: { puncherOpenId: openid, mediaUrl: fileID, subject }
-          });
-          
-          // 更新动态消息卡片内容
-          if (that.data.activityId) {
-            const countRes = await db.collection('check_ins').where({
-              createTime: _.gte(new Date(new Date().setHours(0,0,0,0))),
-              puncherOpenId: openid
-            }).count();
-            
-            await wx.cloud.callFunction({
-              name: 'manageDynamicMsg',
-              data: {
-                action: 'update',
-                activityId: that.data.activityId,
-                content: `今日已打卡：${countRes.total}人，最新：${currentUser.nickName}`
-              }
-            });
-          }
-        } catch (notifyErr) {
-          console.warn('通知同步失败，但打卡成功', notifyErr);
-        }
-        
+        const recordId = res._id;
+
+        // 先提示打卡成功
+        wx.showToast({
+          title: '打卡成功！',
+          icon: 'success',
+          duration: 1500
+        });
+
+        // 保存记录 ID，供后续 AI 评分使用
+        that.setData({
+          recordId: recordId
+        });
+
         that.checkTodayStatus();
         that.queryCount();
+        that.fetchLatestPunch();
+
+        // 打卡成功后：若孩子已绑定家长，则通知所有绑定家长（订阅消息）
+        // 注意：订阅消息授权需在家长端前置 requestSubscribeMessage
+        try {
+          await wx.cloud.callFunction({
+            name: 'notifyParentOnPunch',
+            data: { recordId }
+          });
+        } catch (e) {
+          // 通知失败不影响打卡主流程
+          console.warn('通知家长失败（忽略）', e);
+        }
+
+        // 不再自动调用 AI 评分，等待用户手动点击
       },
       fail: err => {
         wx.hideLoading();
@@ -290,191 +456,330 @@ Page({
     });
   },
 
+  // AI 评分调用函数（用户手动点击触发）
+  onAIEvaluate: async function() {
+    const that = this;
+    const subject = this.data.subjects[this.data.selectedSubjectIndex];
+    const currentUserOpenId = this.data.currentUserOpenId;
+    
+    // 获取当前日期范围（今天）
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    
+    try {
+      // 查询当前日期、当前科目的最新打卡记录
+      const res = await db.collection('check_ins')
+        .where({
+          createTime: _.gte(start).and(_.lte(end)),
+          subject: subject,
+          puncherOpenId: currentUserOpenId
+        })
+        .orderBy('createTime', 'desc')
+        .limit(1)
+        .get();
+      
+      if (res.data.length === 0) {
+        wx.showToast({ title: '今日还未打卡', icon: 'none' });
+        return;
+      }
+      
+      const record = res.data[0];
+      
+      if (record.mediaType !== 'image') {
+        wx.showToast({ title: '仅支持图片评分', icon: 'none' });
+        return;
+      }
+      
+      // 调用 AI 评分，传入 fileID（云函数内部会转换为临时 URL）
+      this.callAIEvaluate(record._id, subject, record.mediaType, record.mediaUrl);
+    } catch (err) {
+      console.error('获取打卡记录失败', err);
+      wx.showToast({ title: '获取记录失败', icon: 'none' });
+    }
+  },
+
+  // AI 评分调用函数
+  callAIEvaluate: function(recordId, subject, fileType, fileID) {
+    const that = this;
+    
+    // 显示加载动画
+    that.showAILoadingAnim();
+    
+    // 直接调用 doubaoAI 云函数进行图片识别和分析
+    wx.cloud.callFunction({
+      name: 'doubaoAI',
+      data: {
+        fileID: fileID,
+        userPrompt: `你是一位严格的${subject}老师，请识别图片中的学习打卡内容。请按以下 JSON 格式回复（只返回 JSON，不要其他文字）：
+{
+  "recognized_content": "识别到的打卡内容（如：1+1=3, 2+2=4, 3+3=7）",
+  "total_questions": 题目总数量（数字，如 5）,
+  "correct_questions": 正确题目数量（数字，如 3）,
+  "score": 得分（数字，计算公式：correct_questions/total_questions*10，保留整数）,
+  "judgment": "对打卡内容进行判断（如：共 5 道题，正确 3 道，错误 2 道，需要加强练习）",
+  "suggestion": "具体的学习建议",
+  "check_results": [
+    {"question": "第 1 题题目内容", "user_answer": "用户写的答案", "correct_answer": "正确答案", "is_correct": false},
+    {"question": "第 2 题题目内容", "user_answer": "用户写的答案", "correct_answer": "正确答案", "is_correct": true}
+  ]
+}
+
+注意：
+1. 请仔细识别图片中的每一道题目
+2. 准确判断每道题的对错
+3. score = Math.round(correct_questions / total_questions * 10)
+4. 如果只有 1 道题，正确得 10 分，错误得 0 分
+5. check_results 必须包含每道题的详细信息：question(题目)、user_answer(用户答案)、correct_answer(正确答案)、is_correct(是否正确)`
+      },
+      timeout: 60000, // 60 秒超时
+      success: (aiRes) => {
+        that.hideAILoadingAnim();
+        console.log('AI 分析完成:', aiRes);
+        console.log('AI 分析 result:', aiRes.result);
+        console.log('AI 分析 data:', aiRes.result ? aiRes.result.data : 'no data');
+        
+        // 检查返回结果
+        if (aiRes.result && aiRes.result.success && aiRes.result.data) {
+          const result = aiRes.result.data;
+          console.log('解析后的 result 对象:', JSON.stringify(result));
+          // 保存 AI 结果到数据库
+          that.saveAIResultToDB(recordId, result, subject);
+          // 显示分析结果弹框
+          that.showAIResultModal(result, fileType, fileID, subject);
+        } else {
+          // AI 分析失败
+          console.log('AI 分析失败:', aiRes.result);
+          wx.showToast({
+            title: 'AI 分析失败，请重试',
+            icon: 'none',
+            duration: 2000
+          });
+        }
+      },
+      fail: (aiErr) => {
+        that.hideAILoadingAnim();
+        console.error('AI 分析失败:', aiErr);
+        wx.showToast({
+          title: 'AI 分析失败：' + (aiErr.errMsg || '未知错误'),
+          icon: 'none',
+          duration: 2000
+        });
+      }
+    });
+  },
+
+  // 保存 AI 分析结果到数据库
+  saveAIResultToDB: function(recordId, result, subject) {
+    const score = result.score || 0;
+    const suggestion = result.suggestion || '';
+    const judgment = result.judgment || '';
+    const recognizedContent = result.recognized_content || '';
+    const totalQuestions = result.total_questions || 0;
+    const correctQuestions = result.correct_questions || 0;
+    const checkResults = result.check_results || [];
+
+    db.collection('check_ins').doc(recordId).update({
+      data: {
+        score: score,
+        suggestion: suggestion,
+        aiAnalysis: judgment,
+        recognizedContent: recognizedContent,
+        totalQuestions: totalQuestions,
+        correctQuestions: correctQuestions,
+        checkResults: checkResults,
+        analyzedAt: db.serverDate()
+      },
+      success: (res) => {
+        console.log('AI 结果保存成功');
+        // AI 评分成功后，更新首页和历史记录页面的数据
+        this.fetchLatestPunch();
+        // 通知历史记录页面刷新数据（如果已打开）
+        this.notifyHistoryRefresh();
+      },
+      fail: (err) => {
+        console.error('AI 结果保存失败', err);
+      }
+    });
+  },
+
+  // 通知历史记录页面刷新数据
+  notifyHistoryRefresh: function() {
+    // 获取所有页面实例
+    const pages = getCurrentPages();
+    // 查找历史记录页面
+    const historyPage = pages.find(page => page.route === 'pages/history/history');
+    if (historyPage && typeof historyPage.fetchRecords === 'function') {
+      historyPage.fetchRecords();
+    }
+  },
+
+  // 显示 AI 分析结果弹框（使用自定义模态框支持滚动）
+  showAIResultModal: function(result, fileType, fileID, subject) {
+    console.log('showAIResultModal result:', result);
+    
+    const that = this;
+    
+    // 豆包 AI 返回格式：{recognized_content: "识别内容", total_questions: 总题数，correct_questions: 正确题数，score: 得分，judgment: "判断结果", suggestion: "学习建议", check_results: [{question, user_answer, correct_answer, is_correct}]}
+    const score = result.score || 0;
+    const recognizedContent = result.recognized_content || '';
+    const judgment = result.judgment || '';
+    const suggestion = result.suggestion || '';
+    const totalQuestions = result.total_questions || 0;
+    const correctQuestions = result.correct_questions || 0;
+    const checkResults = result.check_results || [];
+    
+    // 根据得分计算颜色（>=8 分绿色，>=6 分橙色，<6 分红色）
+    let scoreClass = 'score-low';
+    if (score >= 8) {
+      scoreClass = 'score-high';
+    } else if (score >= 6) {
+      scoreClass = 'score-mid';
+    }
+    
+    // 解析英语单词打卡内容（汉译英格式）
+    let wordList = [];
+    if (subject === '英语' && recognizedContent) {
+      wordList = this.parseWordList(recognizedContent, checkResults);
+    }
+    
+    // 设置数据到页面（使用原生数据绑定）
+    that.setData({
+      aiScore: score,
+      aiScoreClass: scoreClass,
+      aiRecognizedContent: recognizedContent,
+      aiWordList: wordList,
+      aiTotalQuestions: totalQuestions,
+      aiCorrectQuestions: correctQuestions,
+      aiJudgment: judgment,
+      aiSuggestion: suggestion,
+      aiCheckResults: checkResults,
+      showAIResultModal: true,
+      fileType: fileType,
+      fileID: fileID
+    });
+  },
+  
+  // 解析英语单词列表（从识别内容中提取汉译英格式）
+  parseWordList: function(recognizedContent, checkResults) {
+    const wordList = [];
+    
+    // 尝试从 checkResults 中提取单词信息
+    if (checkResults && checkResults.length > 0) {
+      checkResults.forEach(item => {
+        // 从 question 中提取中文（格式：汉译英：老师）
+        let cn = '';
+        if (item.question && item.question.includes('汉译英：')) {
+          cn = item.question.replace('汉译英：', '').trim();
+        } else {
+          cn = item.question || '';
+        }
+        
+        wordList.push({
+          cn: cn,
+          en: item.user_answer || '',
+          correct: item.correct_answer || '',
+          isCorrect: item.is_correct || false
+        });
+      });
+    }
+    
+    // 如果 checkResults 为空，尝试从 recognizedContent 中解析
+    // 格式如：老师-teacher, 苹果-peay, 头发-hand
+    if (wordList.length === 0 && recognizedContent) {
+      const pairs = recognizedContent.split(/[,,]/);
+      pairs.forEach(pair => {
+        const parts = pair.trim().split(/[-]/);
+        if (parts.length >= 2) {
+          wordList.push({
+            cn: parts[0].trim(),
+            en: parts[1].trim(),
+            correct: parts[1].trim(), // 暂时假设用户写的是正确的
+            isCorrect: true
+          });
+        }
+      });
+    }
+    
+    return wordList;
+  },
+  
+  // 关闭 AI 评分结果弹框
+  closeAIResultModal: function() {
+    this.setData({
+      showAIResultModal: false
+    });
+  },
+  
+  // 查看原图
+  viewOriginalImage: function() {
+    const that = this;
+    wx.previewImage({
+      urls: [that.data.fileID],
+      current: that.data.fileID
+    });
+    // 预览后关闭弹框并跳转到历史记录
+    setTimeout(() => {
+      that.closeAIResultModal();
+      wx.navigateTo({
+        url: '/pages/history/history'
+      });
+    }, 500);
+  },
+  
+  // 查看记录
+  goToHistoryFromModal: function() {
+    this.closeAIResultModal();
+    // 传递当前选中的科目索引到历史记录页面
+    wx.navigateTo({
+      url: '/pages/history/history?selectedSubjectIndex=' + this.data.selectedSubjectIndex
+    });
+  },
+
   // 科目选择
   onSubjectChange: function(e) {
     this.setData({ selectedSubjectIndex: e.detail.value });
     this.checkTodayStatus();
     this.queryCount();
+    this.fetchLatestPunch();
   },
 
-
-
-  // 编辑资料交互
-  showProfileModal: function() {
+  // 显示 AI 加载动画
+  showAILoadingAnim: function() {
+    const that = this;
+    
+    // 随机选择一个小动物
+    const randomAnimal = this.animalAvatars[Math.floor(Math.random() * this.animalAvatars.length)];
+    
     this.setData({
-      showProfileModal: true,
-      tempNickName: this.data.currentUserNickName,
-      tempTeamName: this.data.teamName
+      showAILoading: true,
+      currentAnimal: randomAnimal
+    });
+    
+    // 每 0.8 秒切换一个小动物
+    const timer = setInterval(() => {
+      const newAnimal = this.animalAvatars[Math.floor(Math.random() * this.animalAvatars.length)];
+      that.setData({
+        currentAnimal: newAnimal
+      });
+    }, 800);
+    
+    this.setData({
+      animalTimer: timer
     });
   },
 
-  hideProfileModal: function() {
-    this.setData({ showProfileModal: false });
-  },
-
-  onChooseAvatar: function(e) {
-    this.setData({ tempAvatarUrl: e.detail.avatarUrl });
-  },
-
-  onNicknameBlur: function(e) {
-    this.setData({ tempNickName: e.detail.value });
-  },
-
-  onTeamNameInput: function(e) {
-    this.setData({ tempTeamName: e.detail.value });
-  },
-
-  saveProfile: async function() {
-    const { tempAvatarUrl, tempNickName, tempTeamName, currentUserOpenId, teamId, isProfileInitial } = this.data;
-    const defaultAvatar = 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0';
-
-    if (!tempNickName) return wx.showToast({ title: '请输入昵称', icon: 'none' });
-    if (!tempTeamName) return wx.showToast({ title: '请输入团队名', icon: 'none' });
-
-    wx.showLoading({ title: isProfileInitial ? '注册中...' : '保存中...', mask: true });
-    try {
-      let finalAvatarUrl = tempAvatarUrl;
-      // 1. 如果修改了头像且不是默认头像，上传
-      if (tempAvatarUrl !== defaultAvatar && !tempAvatarUrl.startsWith('cloud://')) {
-        const suffixMatch = /\.[^\.]+$/.exec(tempAvatarUrl);
-        const suffix = suffixMatch ? suffixMatch[0] : '.png';
-        const cloudPath = `avatars/${Date.now()}-${Math.floor(Math.random() * 1000)}${suffix}`;
-        const uploadRes = await wx.cloud.uploadFile({ cloudPath, filePath: tempAvatarUrl });
-        finalAvatarUrl = uploadRes.fileID;
-      }
-
-      // 2. 更新用户信息 (改用云函数以规避真机权限问题)
-      const regRes = await wx.cloud.callFunction({
-        name: 'registerUser',
-        data: {
-          nickName: tempNickName,
-          avatarUrl: finalAvatarUrl,
-          teamName: tempTeamName,
-          teamId: teamId
-        }
-      });
-
-      if (!regRes.result || !regRes.result.success) {
-        throw new Error(regRes.result ? regRes.result.message : '云函数调用失败');
-      }
-
-      // 3. 如果团队名变了，同步更新整个团队
-      if (tempTeamName !== this.data.teamName) {
-        await wx.cloud.callFunction({
-          name: 'registerUser',
-          data: { action: 'updateTeamName', teamId, teamName: tempTeamName }
-        });
-      }
-
-      // 4. 更新本地状态和缓存
-      const userInfo = {
-        openId: currentUserOpenId,
-        nickName: tempNickName,
-        avatarUrl: finalAvatarUrl,
-        teamId: teamId,
-        teamName: tempTeamName
-      };
-      wx.setStorageSync('currentUser', userInfo);
-
-      // 先隐藏加载，再弹出提示，避免提示被隐藏
-      wx.hideLoading();
-      
+  // 隐藏 AI 加载动画
+  hideAILoadingAnim: function() {
+    if (this.data.animalTimer) {
+      clearInterval(this.data.animalTimer);
       this.setData({
-        currentUserNickName: tempNickName,
-        teamName: tempTeamName,
-        isProfileInitial: false,
-        showProfileModal: false
+        animalTimer: null
       });
-
-      // 触发数据刷新
-      await this.loadTeamMembers(teamId);
-      this.checkTodayStatus();
-      this.queryCount();
-
-      wx.showToast({ 
-        title: isProfileInitial ? '注册成功' : '保存成功', 
-        icon: 'success',
-        duration: 2000
-      });
-    } catch (e) {
-      wx.hideLoading();
-      console.error(e);
-      wx.showToast({ title: '操作失败', icon: 'none' });
     }
-  },
-
-  // 加载同团队所有成员
-  loadTeamMembers: async function(teamId) {
-    try {
-      const res = await db.collection('users').where({
-        teamId: teamId
-      }).get();
-
-      const participantList = res.data.map(u => ({
-        _openid: u._openid,
-        nickName: u.nickName || '打卡人'
-      }));
-
-      // 排序：本人置顶
-      const myOpenId = this.data.currentUserOpenId;
-      participantList.sort((a, b) => {
-        if (a._openid === myOpenId) return -1;
-        if (b._openid === myOpenId) return 1;
-        return 0;
-      });
-
-      this.setData({
-        participantList,
-        currentParticipantOpenId: myOpenId,
-        selectedParticipantIndex: 0
-      });
-    } catch (err) {
-      console.error('加载成员失败', err);
-    }
-  },
-
-
-
-  // 获取/创建动态消息 ID
-  fetchActivityId: async function() {
-    try {
-      const res = await wx.cloud.callFunction({
-        name: 'manageDynamicMsg',
-        data: { action: 'create' }
-      });
-      if (res.result.success) {
-        this.setData({ activityId: res.result.activityId });
-      }
-    } catch (err) {
-      console.error('获取动态消息ID失败', err);
-    }
-  },
-
-  // 分享配置
-  onShareAppMessage: function(res) {
-    const teamId = this.data.teamId;
-    const teamName = this.data.teamName || '学习打卡';
-    const activityId = this.data.activityId;
-
-    return {
-      title: `快来加入 [${teamName}] 团队吧！`,
-      path: `/pages/index/index?teamId=${teamId}`,
-      isUpdatableMessage: true,
-      templateId: 'ZTWzbhWfZxCTXBPLJFKLbmZ89F1b_6tcfUlhEPmFpyA',
-      activityId: activityId
-    };
-  },
-
-  // 打卡人切换
-  onParticipantChange: function(e) {
-    const newIndex = e.detail.value;
-    const newParticipantOpenId = this.data.participantList[newIndex]._openid;
-    this.setData({ 
-      selectedParticipantIndex: newIndex,
-      currentParticipantOpenId: newParticipantOpenId
+    
+    this.setData({
+      showAILoading: false
     });
-    this.checkTodayStatus();
-    this.queryCount();
-  },
-
+  }
 });

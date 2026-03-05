@@ -1,0 +1,30 @@
+<view class="toolbox-container">
+  <!-- 页面标题 -->
+  <view class="page-header">
+    <text class="page-title">🧰 工具箱</text>
+  </view>
+
+  <!-- 工具列表 -->
+  <view class="tools-grid">
+    <!-- 扫描单词工具 -->
+    <view class="tool-card" bindtap="goToScanWord">
+      <view class="tool-icon">📖</view>
+      <view class="tool-name">扫描单词</view>
+      <view class="tool-desc">拍照识别单词，语音朗读</view>
+    </view>
+
+    <!-- 单词本工具 -->
+    <view class="tool-card" bindtap="goToWordbook">
+      <view class="tool-icon">📚</view>
+      <view class="tool-name">单词本</view>
+      <view class="tool-desc">按月整理，支持备注与记忆状态</view>
+    </view>
+
+    <!-- 其他工具预留位置 -->
+    <view class="tool-card tool-placeholder">
+      <view class="tool-icon">🔜</view>
+      <view class="tool-name">更多工具</view>
+      <view class="tool-desc">敬请期待</view>
+    </view>
+  </view>
+</view>

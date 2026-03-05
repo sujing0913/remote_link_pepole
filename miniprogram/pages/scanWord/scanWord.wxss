@@ -1,0 +1,259 @@
+/* 容器 */
+.scan-word-container {
+  padding: 20rpx;
+  min-height: 100vh;
+  background-color: #f8f8f8;
+}
+
+/* 页面标题 */
+.page-header {
+  padding: 30rpx 0;
+  text-align: center;
+}
+
+.page-title {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #333;
+  display: block;
+}
+
+.page-subtitle {
+  font-size: 26rpx;
+  color: #999;
+  margin-top: 10rpx;
+  display: block;
+}
+
+/* 拍照区域 */
+.camera-section {
+  padding: 40rpx 0;
+}
+
+.camera-placeholder {
+  background-color: #fff;
+  border-radius: 20rpx;
+  padding: 80rpx 40rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
+}
+
+.placeholder-icon {
+  font-size: 100rpx;
+  margin-bottom: 30rpx;
+}
+
+.placeholder-text {
+  font-size: 32rpx;
+  color: #666;
+  margin-bottom: 15rpx;
+}
+
+.placeholder-hint {
+  font-size: 24rpx;
+  color: #999;
+}
+
+/* 图片预览 */
+.image-preview {
+  position: relative;
+  background-color: #fff;
+  border-radius: 20rpx;
+  padding: 20rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
+}
+
+.preview-image {
+  width: 100%;
+  height: 400rpx;
+  border-radius: 12rpx;
+}
+
+.re-scan-tip {
+  position: absolute;
+  bottom: 30rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  padding: 10rpx 30rpx;
+  border-radius: 30rpx;
+  font-size: 24rpx;
+}
+
+/* 识别结果 */
+.word-result {
+  background-color: #fff;
+  border-radius: 20rpx;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
+}
+
+/* 单词头部 */
+.word-header {
+  text-align: center;
+  padding-bottom: 30rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+  margin-bottom: 30rpx;
+}
+
+.word-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 15rpx;
+}
+
+.word-text {
+  font-size: 56rpx;
+  font-weight: bold;
+  color: #333;
+  margin-right: 20rpx;
+}
+
+.play-audio-btn {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 15rpx rgba(102, 126, 234, 0.4);
+}
+
+.play-audio-btn::after {
+  border: none;
+}
+
+.audio-icon {
+  font-size: 40rpx;
+}
+
+.phonetic-container {
+  display: flex;
+  justify-content: center;
+}
+
+.phonetic-symbol {
+  font-size: 28rpx;
+  color: #666;
+  background-color: #f5f5f5;
+  padding: 8rpx 20rpx;
+  border-radius: 20rpx;
+}
+
+/* 单词区块 */
+.word-section {
+  margin-bottom: 30rpx;
+}
+
+.word-section:last-child {
+  margin-bottom: 0;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 15rpx;
+  display: flex;
+  align-items: center;
+}
+
+.section-content {
+  font-size: 28rpx;
+  color: #666;
+  line-height: 1.8;
+  background-color: #f8f9fa;
+  padding: 20rpx;
+  border-radius: 12rpx;
+}
+
+.section-content.memory-tip {
+  background-color: #fff9e6;
+  border-left: 4rpx solid #ffbb00;
+}
+
+/* 例句列表 */
+.sentence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15rpx;
+}
+
+.sentence-item {
+  background-color: #f8f9fa;
+  border-radius: 12rpx;
+  padding: 20rpx;
+  border-left: 4rpx solid #667eea;
+}
+
+.sentence-en {
+  font-size: 28rpx;
+  color: #333;
+  margin-bottom: 8rpx;
+  line-height: 1.6;
+}
+
+.sentence-cn {
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.5;
+}
+
+/* 加载状态 */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60rpx 0;
+}
+
+.loading-spinner {
+  width: 60rpx;
+  height: 60rpx;
+  border: 4rpx solid #f0f0f0;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20rpx;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 28rpx;
+  color: #666;
+}
+
+/* 重新扫描按钮 */
+.rescan-btn {
+  width: 100%;
+  height: 88rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  border-radius: 44rpx;
+  font-size: 32rpx;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 20rpx rgba(102, 126, 234, 0.4);
+}
+
+.rescan-btn::after {
+  border: none;
+}
+
+.rescan-btn:active {
+  opacity: 0.9;
+  transform: scale(0.98);
+}

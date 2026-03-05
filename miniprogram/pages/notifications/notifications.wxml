@@ -1,0 +1,33 @@
+<view class="page">
+  <view class="header">
+    <view class="title">通知中心</view>
+    <view class="actions">
+      <button class="btn" size="mini" bindtap="refresh">刷新</button>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="tip">加载中...</view>
+
+  <view wx:if="{{!loading && list.length === 0}}" class="empty">
+    暂无通知
+  </view>
+
+  <view class="list" wx:if="{{list.length > 0}}">
+    <view
+      class="item {{item.read ? 'read' : 'unread'}}"
+      wx:for="{{list}}"
+      wx:key="_id"
+      bindtap="onTapItem"
+      data-id="{{item._id}}"
+      data-child="{{item.child_openid}}"
+      data-record="{{item.record_id}}"
+    >
+      <view class="row">
+        <view class="dot" wx:if="{{!item.read}}"></view>
+        <view class="item-title">{{item.title}}</view>
+        <view class="time">{{formatTime(item.create_time)}}</view>
+      </view>
+      <view class="content">{{item.content}}</view>
+    </view>
+  </view>
+</view>

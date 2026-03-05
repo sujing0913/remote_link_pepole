@@ -1,0 +1,290 @@
+page {
+  background: #f6f7f9;
+}
+
+.container {
+  padding: 24rpx;
+  padding-bottom: 40rpx;
+  box-sizing: border-box;
+}
+
+/* 顶部用户卡片 */
+.profile-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 28rpx 24rpx;
+  border-radius: 20rpx;
+  background: linear-gradient(135deg, #07c160 0%, #2ad38a 60%, #70e0b6 100%);
+  box-shadow: 0 10rpx 26rpx rgba(7, 193, 96, 0.25);
+  margin-bottom: 20rpx;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.profile-left {
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 56rpx;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.25);
+  flex: 0 0 auto;
+}
+
+.avatar {
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 56rpx;
+}
+
+.profile-right {
+  flex: 1;
+  margin-left: 20rpx;
+  min-width: 0;
+}
+
+.profile-name {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 14rpx;
+  min-width: 0;
+}
+
+.name-text {
+  color: #fff;
+  font-size: 34rpx;
+  font-weight: 700;
+  max-width: 440rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.role-pill {
+  font-size: 22rpx;
+  color: #0b1220;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 6rpx 14rpx;
+  border-radius: 999rpx;
+  flex: 0 0 auto;
+}
+
+.role-pill.parent {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.role-pill.child {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.role-pill.guest {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.sub-text {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* 通用卡片 */
+.card {
+  background: #ffffff;
+  border-radius: 18rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 8rpx 20rpx rgba(0, 0, 0, 0.06);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.title {
+  font-size: 30rpx;
+  font-weight: 700;
+  margin-bottom: 16rpx;
+  color: #0b1220;
+}
+
+.row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12rpx 0;
+}
+
+.label {
+  color: #667085;
+  font-size: 26rpx;
+  flex: 0 0 auto;
+}
+
+.value {
+  color: #0b1220;
+  font-size: 26rpx;
+  max-width: 520rpx;
+  text-align: right;
+  word-break: break-all;
+}
+
+.inline {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12rpx;
+}
+
+.edit-inline {
+  flex-wrap: wrap;
+}
+
+.mini-btn {
+  padding: 0 18rpx;
+  line-height: 1.9;
+  border-radius: 999rpx;
+}
+
+.primary-mini {
+  background: #07c160;
+  color: #fff;
+}
+
+.input {
+  border: 2rpx solid #e5e6eb;
+  border-radius: 12rpx;
+  padding: 16rpx 16rpx;
+  width: 360rpx;
+  font-size: 26rpx;
+  text-align: left;
+  background: #fff;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  font-size: 24rpx;
+  color: #0b1220;
+  letter-spacing: 6rpx;
+}
+
+/* 孩子列表 */
+.child-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.child-left {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+}
+
+.child-check {
+  margin-right: 16rpx;
+}
+
+.child-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  min-width: 0;
+}
+
+.child-name {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #0b1220;
+  max-width: 480rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.child-meta {
+  font-size: 22rpx;
+  color: #667085;
+}
+
+.select-tag {
+  font-size: 22rpx;
+  color: #07c160;
+  background: rgba(7, 193, 96, 0.12);
+  padding: 6rpx 12rpx;
+  border-radius: 999rpx;
+  min-width: 60rpx;
+  text-align: center;
+}
+
+.select-tag.on {
+  background: rgba(7, 193, 96, 0.18);
+}
+
+.toolbar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin: 10rpx 0 6rpx;
+}
+
+.toolbar-tip {
+  color: #667085;
+  font-size: 24rpx;
+}
+
+.danger-btn {
+  background: #ff4d4f;
+  color: #fff;
+  border-radius: 999rpx;
+}
+
+.empty {
+  color: #98a2b3;
+  padding: 10rpx 0;
+}
+
+/* 说明 */
+.row.clickable {
+  cursor: pointer;
+}
+
+.value-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14rpx;
+}
+
+.badge {
+  display: inline-block;
+  min-width: 34rpx;
+  height: 34rpx;
+  padding: 0 10rpx;
+  border-radius: 17rpx;
+  line-height: 34rpx;
+  font-size: 22rpx;
+  color: #fff;
+  background: #ff3b30;
+  text-align: center;
+}
+
+.arrow {
+  color: #bbb;
+  font-size: 36rpx;
+  line-height: 1;
+}
+
+.tips {
+  margin: 30rpx 0 20rpx;
+  color: #999;
+  font-size: 24rpx;
+  line-height: 1.6;
+}

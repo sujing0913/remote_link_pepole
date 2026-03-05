@@ -1,0 +1,80 @@
+<view class="scan-word-container">
+  <!-- 页面标题 -->
+  <view class="page-header">
+    <text class="page-title">📖 扫描单词</text>
+    <text class="page-subtitle">拍照识别单词，语音朗读</text>
+  </view>
+
+  <!-- 拍照区域 -->
+  <view class="camera-section" wx:if="{{!hasScanned}}">
+    <view class="camera-placeholder" bindtap="chooseImage">
+      <view class="placeholder-icon">📷</view>
+      <view class="placeholder-text">点击拍照或选择图片</view>
+      <view class="placeholder-hint">支持识别英语单词</view>
+    </view>
+  </view>
+
+  <!-- 已扫描结果显示 -->
+  <view class="result-section" wx:if="{{hasScanned}}">
+    <!-- 图片预览 -->
+    <view class="image-preview" bindtap="chooseImage">
+      <image class="preview-image" src="{{imageUrl}}" mode="aspectFit" />
+      <view class="re-scan-tip">点击重新拍摄</view>
+    </view>
+
+    <!-- 识别结果 -->
+    <view class="word-result" wx:if="{{wordData}}">
+      <!-- 单词头部 -->
+      <view class="word-header">
+        <view class="word-main">
+          <text class="word-text">{{wordData.word}}</text>
+          <button class="play-audio-btn" bindtap="playAudio">
+            <text class="audio-icon">🔊</text>
+          </button>
+        </view>
+        <view class="phonetic-container">
+          <text class="phonetic-symbol" wx:if="{{wordData.phonetic}}">/{{wordData.phonetic}}/</text>
+        </view>
+      </view>
+
+      <!-- 单词意思 -->
+      <view class="word-section">
+        <view class="section-title">📝 单词意思</view>
+        <view class="section-content">{{wordData.meaning}}</view>
+      </view>
+
+      <!-- 常见组句 -->
+      <view class="word-section" wx:if="{{wordData.sentences && wordData.sentences.length > 0}}">
+        <view class="section-title">💬 常见组句</view>
+        <view class="sentence-list">
+          <view class="sentence-item" wx:for="{{wordData.sentences}}" wx:key="index" wx:for-item="sentence">
+            <view class="sentence-en">{{sentence.en}}</view>
+            <view class="sentence-cn">{{sentence.cn}}</view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 记忆技巧 -->
+      <view class="word-section" wx:if="{{wordData.memoryTips}}">
+        <view class="section-title">🧠 记忆技巧</view>
+        <view class="section-content memory-tip">{{wordData.memoryTips}}</view>
+      </view>
+    </view>
+
+    <!-- 加载状态 -->
+    <view class="loading-state" wx:if="{{isLoading}}">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">正在识别单词...</text>
+    </view>
+
+    <!-- 操作按钮 -->
+    <view class="action-buttons" wx:if="{{!isLoading && wordData}}">
+      <button class="add-wordbook-btn" bindtap="addToWordBook">
+        📚 加入单词本
+      </button>
+      <button class="rescan-btn" bindtap="resetScan">
+        🔍 重新扫描
+      </button>
+    </view>
+  </view>
+</view>

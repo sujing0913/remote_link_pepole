@@ -8,69 +8,83 @@ Page({
     totalScore: 0,
     flowerCount: 0,
     trophyCount: 0,
-    groupedRecords: [], // { month: '2023-10', records: [], collapsed: false }
-    // 新增筛选数据
-    currentUser: null,
-    userRole: '',
-    participantList: [],
-    selectedParticipantIndex: 0,
+    records: [], // 扁平数组，用于表格显示
+    monthGroups: [], // 按月分组的数据
+    currentUserOpenId: '',
     yearMonthRange: [[], []],
-    selectedYearMonth: [0, 0]
+    selectedYearMonth: [0, 0],
+    subjectRange: ['语文', '数学', '英语'], // 与首页保持一致
+    selectedSubjectIndex: 2, // 默认选中英语（与首页一致）
+
+    // ====== 亲子绑定：家长端孩子筛选 ======
+    isParent: false,
+    childOptions: [{ openid: '', name: '无' }], // 下拉列表（含“无”）
+    selectedChildIndex: 0, // 默认“无”
+    // 若从通知/分享跳转带 childOpenId，则优先选中该孩子
+    presetChildOpenId: '',
+
+    showCheckResultModal: false,
+    // 检查结果弹框数据
+    score: 0,
+    scoreClass: 'score-low',
+    recognizedContent: '',
+    wordList: [],
+    totalQuestions: 0,
+    correctQuestions: 0,
+    aiAnalysis: '',
+    suggestion: '',
+    checkResults: []
   },
 
-  onLoad: async function() {
-    // 从缓存中获取当前用户信息
-    let currentUser = wx.getStorageSync('currentUser');
-    
-    // 如果没有缓存，跳转回首页初始化
-    if (!currentUser) {
-      wx.reLaunch({ url: '/pages/index/index' });
-      return;
-    }
-
-    // 刷新用户信息，确保团队信息最新
+  onLoad: async function(options) {
     try {
-      const userRes = await db.collection('users').where({ _openid: currentUser.openId }).get();
-      if (userRes.data.length > 0) {
-        const latestInfo = userRes.data[0];
-        currentUser.teamId = latestInfo.teamId;
-        currentUser.teamName = latestInfo.teamName;
-        currentUser.nickName = latestInfo.nickName;
-        wx.setStorageSync('currentUser', currentUser);
+      // 获取当前用户 OpenId
+      const { result: user } = await wx.cloud.callFunction({ name: 'getUserInfo' });
+
+      if (!user || !user.openId) {
+        wx.showToast({ title: '获取用户信息失败', icon: 'none' });
+        return;
       }
+
+      // 接收通知跳转参数：childOpenId / recordId（目前仅用于未来扩展定位某条记录）
+      const presetChildOpenId = options.childOpenId ? String(options.childOpenId) : '';
+      const recordId = options.recordId ? String(options.recordId) : '';
+
+      if (recordId) {
+        // 预留：如后续要高亮某条记录，可在这里保存并在 processRecords 后滚动定位
+        this._presetRecordId = recordId;
+      }
+
+      this.setData({
+        currentUserOpenId: user.openId,
+        presetChildOpenId
+      });
+
+      // 接收首页传递的科目索引参数
+      if (options.selectedSubjectIndex !== undefined) {
+        const subjectIndex = parseInt(options.selectedSubjectIndex);
+        this.setData({
+          selectedSubjectIndex: subjectIndex
+        });
+      }
+
+      // 初始化绑定关系（判断是否家长 + 拉孩子列表）
+      await this.initBindingsForRole();
+
+      this.generateYearMonthRange();
+      this.fetchRecords();
     } catch (e) {
-      console.error('刷新用户信息失败', e);
+      console.error('初始化失败', e);
+      wx.showToast({ title: '初始化失败', icon: 'none' });
     }
-
-    this.setData({
-      currentUser: currentUser,
-      userRole: currentUser.role
-    });
-
-    // 加载同团队成员
-    await this.loadParticipantList(currentUser.teamId);
-
-    this.generateYearMonthRange();
-    this.fetchRecords();
   },
 
-  async loadParticipantList(teamId) {
-    const that = this;
+  onShow: async function() {
+    // 家长端：孩子昵称可能在孩子端被修改。每次进入页面都刷新绑定列表，保证筛选项名称最新。
     try {
-      // 根据 teamId 查询所有成员
-      const userRes = await db.collection('users').where({ teamId: teamId }).get();
-      
-      const participantList = [
-        { nickName: '全部队友' },
-        ...userRes.data
-      ];
-
-      that.setData({ 
-        participantList,
-        selectedParticipantIndex: 0
-      });
-    } catch (err) {
-      console.error('加载队友列表失败', err);
+      await this.initBindingsForRole();
+    } catch (e) {
+      // ignore
     }
   },
 
@@ -89,12 +103,69 @@ Page({
     });
   },
 
+  onSubjectChange(e) {
+    this.setData({ selectedSubjectIndex: parseInt(e.detail.value) });
+    this.fetchRecords();
+  },
+
+  // 初始化绑定关系：根据是否有“作为家长的绑定孩子”来识别家长身份
+  initBindingsForRole: async function() {
+    try {
+      const { result } = await wx.cloud.callFunction({ name: 'getMyBindings' });
+      if (!result || !result.success) return;
+
+      const asParent = (result.data && result.data.asParent) || [];
+      const isParent = asParent.length > 0;
+
+      const childOptions = [{ openid: '', name: '无' }, ...asParent];
+
+      // 保持用户当前选中（或通知预设）
+      let selectedChildIndex = this.data.selectedChildIndex || 0;
+
+      // 1) 通知跳转带 childOpenId => 优先选中该孩子
+      // 2) 如果当前选中项 openid 在新列表中仍存在 => 保持不变
+      // 3) 否则如果家长已绑定孩子 => 默认选中第一个孩子（避免停在“无”导致看起来没记录）
+      // 4) 否则 => 选“无”
+      const preset = this.data.presetChildOpenId;
+      if (preset) {
+        const idx = childOptions.findIndex((i) => i.openid === preset);
+        if (idx >= 0) selectedChildIndex = idx;
+      } else {
+        const cur = (this.data.childOptions && this.data.childOptions[selectedChildIndex]) || { openid: '' };
+        if (cur.openid) {
+          const stillIdx = childOptions.findIndex((i) => i.openid === cur.openid);
+          if (stillIdx >= 0) selectedChildIndex = stillIdx;
+          else if (isParent && childOptions.length > 1) selectedChildIndex = 1;
+          else selectedChildIndex = 0;
+        } else {
+          if (isParent && childOptions.length > 1) selectedChildIndex = 1;
+          else selectedChildIndex = 0;
+        }
+      }
+
+      this.setData({
+        isParent,
+        childOptions,
+        selectedChildIndex
+      });
+    } catch (e) {
+      console.warn('初始化绑定关系失败（忽略）', e);
+    }
+  },
+
+  // 家长端切换孩子筛选
+  onChildChange: function(e) {
+    this.setData({ selectedChildIndex: parseInt(e.detail.value) });
+    this.fetchRecords();
+  },
+
   fetchRecords: async function() {
     wx.showLoading({ title: '加载中...' });
     try {
       const [yearIdx, monthIdx] = this.data.selectedYearMonth;
       const year = parseInt(this.data.yearMonthRange[0][yearIdx]);
       const monthStr = this.data.yearMonthRange[1][monthIdx];
+      const selectedSubject = this.data.subjectRange[this.data.selectedSubjectIndex];
 
       let startTime, endTime;
       if (monthStr === '全部') {
@@ -106,30 +177,34 @@ Page({
         endTime = new Date(year, month, 0, 23, 59, 59);
       }
 
+      // 构建查询条件：日期 + 科目 + (家长端可按孩子过滤)
+      // 规则：
+      // - 家长：可选某个孩子 openid，列表只显示该孩子的打卡
+      // - 家长未绑定孩子：下拉为“无”，列表为空提示（由 wxml 处理）
+      // - 孩子/普通用户：只看自己的打卡（currentUserOpenId）
+      let targetOpenId = this.data.currentUserOpenId;
+
+      if (this.data.isParent) {
+        const opt = this.data.childOptions[this.data.selectedChildIndex] || { openid: '' };
+        if (opt.openid) {
+          targetOpenId = opt.openid;
+        } else {
+          // 选“无” => 家长端不展示任何记录
+          this.processRecords([]);
+          wx.hideLoading();
+          return;
+        }
+      }
+
       const query = {
-        createTime: _.gte(startTime).and(_.lte(endTime))
+        createTime: _.gte(startTime).and(_.lte(endTime)),
+        puncherOpenId: targetOpenId,
+        subject: selectedSubject
       };
 
       this.setData({
         currentYear: year
       });
-
-      // 基于团队隔离查询
-      if (this.data.selectedParticipantIndex > 0) {
-        // 选中特定队员
-        query.puncherOpenId = this.data.participantList[this.data.selectedParticipantIndex]._openid;
-      } else {
-        // 全部队友：查询该团队下所有人的记录
-        const allTeamOpenIds = this.data.participantList
-          .filter(p => p._openid)
-          .map(p => p._openid);
-        
-        if (allTeamOpenIds.length > 0) {
-          query.puncherOpenId = _.in(allTeamOpenIds);
-        } else {
-          query.puncherOpenId = this.data.currentUser.openId;
-        }
-      }
 
       const res = await db.collection('check_ins')
         .where(query)
@@ -148,9 +223,13 @@ Page({
   processRecords: function(records) {
     let yearlyTotal = records.length;
     let totalScore = 0;
-    const groups = {};
+    const dailyScores = {}; // 用于存储每天的最高分 { 'YYYY-MM-DD': maxScore }
 
-    const formattedRecords = records.map(item => {
+    // 今日（本地时区）用于标注
+    const now = new Date();
+    const todayKey = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
+
+    const processedRecords = records.map(item => {
       const date = new Date(item.createTime);
       const y = date.getFullYear();
       const m = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -158,147 +237,99 @@ Page({
       const hh = date.getHours().toString().padStart(2, '0');
       const mm = date.getMinutes().toString().padStart(2, '0');
       
-      const monthKey = `${y}年${m}月`;
       const dateStr = `${m}-${d}`;
       const timeStr = `${hh}:${mm}`;
+      const dateTimeStr = `${m}-${d}/${hh}:${mm}`; // 合并日期和时间
+      const dayKey = `${y}-${m}-${d}`; // 用于按天去重
+      const monthKey = `${y}-${m}`; // 用于按月分组
+      const isToday = dayKey === todayKey;
 
-      if (item.score !== -1) {
-        totalScore += item.score;
-      }
-
-      // 获取打卡人昵称
-      let participantNickName = '未知';
-      const pList = this.data.participantList || [];
-      const curUser = this.data.currentUser;
-
-      // 更加鲁棒的匹配函数
-      const matchName = (id) => {
-        if (!id) return null;
-        // 1. 在打卡人列表中找 (支持 _openid 和 openId 两种命名)
-        const found = pList.find(p => p._openid === id || p.openId === id);
-        if (found) return found.nickName;
-        // 2. 检查是否是当前登录用户本人
-        if (curUser && (id === curUser.openId || id === curUser._openid)) {
-          return curUser.nickName;
+      // 计算总分（同一天的分数只加一次，选择得分最高的一次）
+      if (item.score !== -1 && typeof item.score === 'number') {
+        if (!dailyScores[dayKey] || item.score > dailyScores[dayKey]) {
+          dailyScores[dayKey] = item.score;
         }
-        return null;
-      };
-
-      // 尝试通过多种可能存在的 ID 字段进行匹配
-      participantNickName = matchName(item.puncherOpenId) || matchName(item._openid) || '未知';
-
-      const processedItem = {
-        ...item,
-        dateStr,
-        timeStr,
-        participantNickName
-      };
-
-      if (!groups[monthKey]) {
-        groups[monthKey] = [];
       }
-      groups[monthKey].push(processedItem);
 
-      return processedItem;
+      return {
+        ...item,
+        dateTimeStr,
+        monthKey,
+        isToday
+      };
     });
 
-    const groupedRecords = Object.keys(groups).map(month => ({
-      month,
-      records: groups[month],
-      collapsed: false
-    }));
+    // 计算总分：将每天的最高分相加
+    totalScore = Object.values(dailyScores).reduce((sum, score) => sum + score, 0);
 
     // 计算奖杯和小红花
-    // 每100分一个奖杯，每10分一朵小红花
+    // 每 100 分一个奖杯，每 10 分一朵小红花
     const trophyCount = Math.floor(totalScore / 100);
     const flowerCount = Math.floor((totalScore % 100) / 10);
+
+    // 按月分组
+    const monthGroupsMap = {};
+    processedRecords.forEach(item => {
+      if (!monthGroupsMap[item.monthKey]) {
+        const [year, month] = item.monthKey.split('-');
+        monthGroupsMap[item.monthKey] = {
+          monthKey: item.monthKey,
+          monthName: `${year}年${parseInt(month)}月`,
+          records: [],
+          count: 0,
+          totalScore: 0,
+          expanded: true // 默认展开
+        };
+      }
+      monthGroupsMap[item.monthKey].records.push(item);
+      monthGroupsMap[item.monthKey].count++;
+      // 累加该月的分数（按每天最高分计算）
+      const dayKey = item.monthKey + '-' + item.dateTimeStr.split('/')[0];
+      if (item.score !== -1 && typeof item.score === 'number') {
+        if (!monthGroupsMap[item.monthKey].dayScores) {
+          monthGroupsMap[item.monthKey].dayScores = {};
+        }
+        if (!monthGroupsMap[item.monthKey].dayScores[dayKey] || item.score > monthGroupsMap[item.monthKey].dayScores[dayKey]) {
+          monthGroupsMap[item.monthKey].dayScores[dayKey] = item.score;
+        }
+      }
+    });
+
+    // 计算每月总分
+    const monthGroups = Object.values(monthGroupsMap).map(group => {
+      group.totalScore = Object.values(group.dayScores || {}).reduce((sum, score) => sum + score, 0);
+      delete group.dayScores; // 删除临时数据
+      return group;
+    });
+
+    // 按月份降序排序
+    monthGroups.sort((a, b) => b.monthKey.localeCompare(a.monthKey));
 
     this.setData({
       yearlyTotal,
       totalScore,
       trophyCount,
       flowerCount,
-      groupedRecords
+      records: processedRecords,
+      monthGroups
     });
   },
 
+  // 切换月份展开/折叠状态
   toggleMonth: function(e) {
-    const month = e.currentTarget.dataset.month;
-    const groupedRecords = this.data.groupedRecords.map(group => {
-      if (group.month === month) {
-        return { ...group, collapsed: !group.collapsed };
+    const monthKey = e.currentTarget.dataset.monthKey;
+    const monthGroups = this.data.monthGroups.map(group => {
+      if (group.monthKey === monthKey) {
+        return { ...group, expanded: !group.expanded };
       }
       return group;
     });
-    this.setData({ groupedRecords });
-  },
-
-  onParticipantFilterChange(e) {
-    this.setData({ selectedParticipantIndex: e.detail.value });
-    this.fetchRecords();
+    this.setData({ monthGroups });
   },
 
   onYearMonthChange(e) {
     this.setData({ selectedYearMonth: e.detail.value });
     this.fetchRecords();
-  },
-
-  // 组织者评分失去焦点
-  onScoreBlur: async function(e) {
-    const id = e.currentTarget.dataset.id;
-    let score = e.detail.value;
-    
-    if (score === '') {
-      score = -1;
-    } else {
-      score = parseInt(score);
-      if (isNaN(score)) {
-        score = -1;
-      } else {
-        // 限制在 0-10 分
-        if (score < 0) score = 0;
-        if (score > 10) score = 10;
-      }
-    }
-
-    try {
-      await wx.cloud.callFunction({
-        name: 'registerUser',
-        data: {
-          action: 'updateCheckIn',
-          checkInId: id,
-          score: score
-        }
-      });
-      // 静默更新本地数据统计，或者重新拉取数据
-      this.fetchRecords();
-    } catch (err) {
-      console.error('评分更新失败', err);
-      wx.showToast({ title: '更新失败', icon: 'error' });
-    }
-  },
-
-  // 组织者建议失去焦点
-  onSuggestBlur: async function(e) {
-    const id = e.currentTarget.dataset.id;
-    const suggestion = e.detail.value;
-
-    try {
-      await wx.cloud.callFunction({
-        name: 'registerUser',
-        data: {
-          action: 'updateCheckIn',
-          checkInId: id,
-          suggestion: suggestion
-        }
-      });
-      // 无需全量更新，仅更新本地展示
-      // 但为了保证统计（如果建议影响统计的话，目前不影响）也可以fetch
-      this.fetchRecords();
-    } catch (err) {
-      console.error('建议更新失败', err);
-      wx.showToast({ title: '更新失败', icon: 'error' });
-    }
   },
 
   viewMedia: function(e) {
@@ -322,5 +353,127 @@ Page({
         wx.showToast({ title: '请升级微信查看视频', icon: 'none' });
       }
     }
+  },
+
+  // 查看建议
+  viewSuggestion: function(e) {
+    const item = e.currentTarget.dataset.item;
+    
+    if (!item || !item.suggestion) return;
+    
+    const that = this;
+    const suggestionText = item.suggestion;
+    
+    wx.showModal({
+      title: '💡 改进建议',
+      content: suggestionText,
+      showCancel: false,
+      confirmText: '知道了',
+      confirmColor: '#07c160'
+    });
+  },
+
+  // 查看检查结果
+  viewCheckResult: function(e) {
+    const item = e.currentTarget.dataset.item;
+    
+    if (!item) return;
+    
+    console.log('查看检查结果的 item:', JSON.stringify(item));
+    
+    // 兼容两种字段命名格式（驼峰和下划线）
+    const checkResults = item.checkResults || item.check_results || [];
+    const totalQuestions = item.totalQuestions || item.total_questions || (checkResults.length > 0 ? checkResults.length : 0);
+    const correctQuestions = item.correctQuestions || item.correct_questions || (checkResults.length > 0 ? checkResults.filter(r => r.is_correct).length : 0);
+    const recognizedContent = item.recognizedContent || item.recognized_content || '';
+    const aiAnalysis = item.aiAnalysis || item.judgment || '';
+    const suggestion = item.suggestion || '';
+    const score = item.score !== undefined && item.score !== -1 ? item.score : 0;
+    
+    // 根据得分计算颜色
+    let scoreClass = 'score-low';
+    if (score >= 8) {
+      scoreClass = 'score-high';
+    } else if (score >= 6) {
+      scoreClass = 'score-mid';
+    }
+    
+    // 解析英语单词列表（汉译英格式）
+    let wordList = [];
+    if (item.subject === '英语' && recognizedContent) {
+      wordList = this.parseWordList(recognizedContent, checkResults);
+    }
+    
+    // 设置数据到页面（使用原生数据绑定）
+    this.setData({
+      score: score,
+      scoreClass: scoreClass,
+      recognizedContent: recognizedContent,
+      wordList: wordList,
+      totalQuestions: totalQuestions,
+      correctQuestions: correctQuestions,
+      aiAnalysis: aiAnalysis,
+      suggestion: suggestion,
+      checkResults: checkResults,
+      showCheckResultModal: true
+    });
+  },
+
+  // 解析英语单词列表（从识别内容中提取汉译英格式）
+  parseWordList: function(recognizedContent, checkResults) {
+    const wordList = [];
+    
+    // 尝试从 checkResults 中提取单词信息
+    if (checkResults && checkResults.length > 0) {
+      checkResults.forEach(item => {
+        // 从 question 中提取中文（格式：汉译英：老师）
+        let cn = '';
+        if (item.question && item.question.includes('汉译英：')) {
+          cn = item.question.replace('汉译英：', '').trim();
+        } else {
+          cn = item.question || '';
+        }
+        
+        wordList.push({
+          cn: cn,
+          en: item.user_answer || '',
+          correct: item.correct_answer || '',
+          isCorrect: item.is_correct || false
+        });
+      });
+    }
+    
+    // 如果 checkResults 为空，尝试从 recognizedContent 中解析
+    // 格式如：老师-teacher, 苹果-peay, 头发-hand
+    if (wordList.length === 0 && recognizedContent) {
+      const pairs = recognizedContent.split(/[,,]/);
+      pairs.forEach(pair => {
+        const parts = pair.trim().split(/[-]/);
+        if (parts.length >= 2) {
+          wordList.push({
+            cn: parts[0].trim(),
+            en: parts[1].trim(),
+            correct: parts[1].trim(),
+            isCorrect: true
+          });
+        }
+      });
+    }
+    
+    return wordList;
+  },
+
+  // 关闭检查结果弹框
+  closeCheckResultModal: function() {
+    this.setData({
+      showCheckResultModal: false
+    });
+  },
+
+  // 关闭 AI 分析结果弹框
+  closeAIResultModal: function() {
+    this.setData({
+      showAIResultModal: false
+    });
   }
 });

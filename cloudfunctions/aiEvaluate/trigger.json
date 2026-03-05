@@ -1,0 +1,9 @@
+{
+  "triggerConfig": {
+    "cronConfiguration": [],
+    "databaseConfiguration": {
+      "collectionName": "check_ins",
+      "operation": "add"
+    }
+  }
+}

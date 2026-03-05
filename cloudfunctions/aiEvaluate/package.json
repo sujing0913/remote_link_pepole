@@ -1,7 +1,7 @@
 {
-  "name": "getUserInfo",
+  "name": "aiEvaluate",
   "version": "1.0.0",
-  "description": "",
+  "description": "AI 评分云函数 - 使用腾讯混元多模态模型分析打卡内容",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

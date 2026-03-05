@@ -1,0 +1,142 @@
+<view class="container">
+  <!-- 顶部用户卡片：头像/昵称/身份 -->
+  <view class="profile-card">
+    <view class="profile-left">
+      <image class="avatar" src="{{userInfo.avatarUrl || '/miniprogram/images/user-icon.png'}}" mode="aspectFill" />
+    </view>
+    <view class="profile-right">
+      <view class="profile-name">
+        <text class="name-text">{{(asParent ? ((parentProfile && parentProfile.nickName) || userInfo.nickName) : userInfo.nickName) || '未命名用户'}}</text>
+        <text class="role-pill {{asParent ? 'parent' : (asChild ? 'child' : 'guest')}}">{{roleText}}</text>
+      </view>
+      <view class="sub-text">打卡工具 · 支持亲子绑定</view>
+    </view>
+  </view>
+
+  <!-- 站内通知入口 -->
+  <view class="card" wx:if="{{asParent}}">
+    <view class="title">消息</view>
+    <view class="row clickable" bindtap="onGoNotifications">
+      <text class="label">通知中心</text>
+      <view class="value value-right">
+        <text wx:if="{{unreadCount > 0}}" class="badge">{{unreadCount}}</text>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 个人信息 -->
+  <view class="card">
+    <view class="title">个人信息</view>
+
+    <view class="row">
+      <text class="label">身份</text>
+      <text class="value">{{roleText}}</text>
+    </view>
+
+    <view class="row clickable" bindtap="onGoBind">
+      <text class="label">绑定监督人</text>
+      <view class="value value-right">
+        <text class="arrow">›</text>
+      </view>
+    </view>
+
+    <!-- 家长档案（仅家长显示；孩子角色不展示绑定码） -->
+    <view wx:if="{{asParent && parentProfile && parentProfile.bind_code}}">
+      <view class="row">
+        <text class="label">绑定码</text>
+        <view class="value">
+          <text class="mono">{{parentProfile.bind_code}}</text>
+        </view>
+      </view>
+      <view class="row">
+        <text class="label">生成时间</text>
+        <text class="value">{{parentProfile.bind_code_create_time || '-'}}</text>
+      </view>
+
+      <view class="row">
+        <text class="label">昵称</text>
+        <view class="value">
+          <view wx:if="{{!editingNickName}}" class="inline">
+            <text>{{parentProfile.nickName || userInfo.nickName || '未设置'}}</text>
+            <button class="mini-btn" size="mini" bindtap="onEditNickName">编辑</button>
+          </view>
+
+          <view wx:else class="inline edit-inline">
+            <input class="input" placeholder="请输入昵称" value="{{nickNameDraft}}" bindinput="onNickNameInput" />
+            <button class="mini-btn primary-mini" size="mini" bindtap="onSaveNickName">保存</button>
+            <button class="mini-btn" size="mini" bindtap="onCancelNickName">取消</button>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 孩子/普通用户：同样支持昵称编辑（写入 users.nickName） -->
+    <view wx:else>
+      <view class="row">
+        <text class="label">昵称</text>
+        <view class="value">
+          <view wx:if="{{!editingNickName}}" class="inline">
+            <text>{{userInfo.nickName || '未设置'}}</text>
+            <button class="mini-btn" size="mini" bindtap="onEditNickName">编辑</button>
+          </view>
+
+          <view wx:else class="inline edit-inline">
+            <input class="input" placeholder="请输入昵称" value="{{nickNameDraft}}" bindinput="onNickNameInput" />
+            <button class="mini-btn primary-mini" size="mini" bindtap="onSaveNickName">保存</button>
+            <button class="mini-btn" size="mini" bindtap="onCancelNickName">取消</button>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{asParent}}">
+    <view class="title">绑定孩子列表</view>
+
+    <view class="toolbar" wx:if="{{children && children.length > 0}}">
+      <button class="danger-btn" size="mini" bindtap="onBatchUnbind">解绑已选</button>
+      <text class="toolbar-tip">已选：{{selectedChildOpenIds.length || 0}}</text>
+    </view>
+
+    <view wx:if="{{children && children.length > 0}}">
+      <checkbox-group bindchange="onSelectChildren">
+        <block wx:for="{{children}}" wx:key="child_openid" wx:for-item="c">
+          <view class="child-item">
+            <view class="child-left">
+              <checkbox class="child-check" value="{{c.child_openid}}" />
+              <view class="child-main">
+                <text class="child-name">{{c.childName || '未命名孩子'}}</text>
+                <text class="child-meta">绑定日期：{{c.bind_time || '-'}}</text>
+              </view>
+            </view>
+            <text class="select-tag {{selectedChildOpenIds.indexOf(c.child_openid) !== -1 ? 'on' : ''}}">
+              {{selectedChildOpenIds.indexOf(c.child_openid) !== -1 ? '已选' : ''}}
+            </text>
+          </view>
+        </block>
+      </checkbox-group>
+    </view>
+
+    <view class="empty" wx:else>暂无绑定孩子</view>
+  </view>
+
+  <view class="card" wx:if="{{asChild}}">
+    <view class="title">我绑定的家长</view>
+
+    <view wx:if="{{parents && parents.length > 0}}">
+      <block wx:for="{{parents}}" wx:key="parent_openid" wx:for-item="p">
+        <view class="row">
+          <text class="label">家长</text>
+          <text class="value">{{p.parentName}}</text>
+        </view>
+      </block>
+    </view>
+
+    <view class="empty" wx:else>暂无绑定家长</view>
+  </view>
+
+  <view class="tips">
+    <text>说明：解绑由家长发起；解绑后孩子打卡将不再通知该家长。</text>
+  </view>
+</view>

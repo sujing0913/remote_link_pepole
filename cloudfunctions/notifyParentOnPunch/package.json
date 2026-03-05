@@ -1,0 +1,9 @@
+{
+  "name": "notifyParentOnPunch",
+  "version": "1.0.0",
+  "description": "孩子打卡后通知绑定家长（订阅消息）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "^3.0.0"
+  }
+}

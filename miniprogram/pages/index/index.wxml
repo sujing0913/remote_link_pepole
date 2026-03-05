@@ -1,61 +1,30 @@
 <view class="container">
   <!-- 顶部查询区域 -->
   <view class="header">
-    <!-- 第一行：用户 + 团队 + 历史记录 -->
-    <view class="first-row-v2">
-      <view class="user-team-info-inline">
-        <view class="info-item" bindtap="showProfileModal">
-          <text class="label">队友：</text>
-          <text class="value link">{{currentUserNickName || '未登录'}}</text>
-        </view>
-      </view>
-      <view class="history-link" bindtap="goToHistory">历史记录 ></view>
-    </view>
-
-    <!-- 第二行：今日打卡状态 + 队友选择 -->
-    <view class="second-row-v2">
+    <!-- 第一行：今日行动 -->
+    <view class="today-action-row">
       <view class="info-block today-block">
         <text>
           <text class="label">今日打卡：</text>
-          <text class="value {{isTodayDone ? 'done' : 'pending'}}">{{subjects[selectedSubjectIndex]}}-{{isTodayDone ? '已打卡' : '未打卡'}}</text>
+          <text class="value {{isTodayDone ? 'done' : 'pending'}}">{{subjects[selectedSubjectIndex]}}-{{isTodayDone ? '已完成' : '未完成'}}</text>
         </text>
       </view>
-      
-      <view class="separator">|</view>
-      
-      <view class="info-block participant-block">
-        <text>队友：</text>
-        <picker mode="selector" range="{{participantList}}" range-key="nickName" value="{{selectedParticipantIndex}}" bindchange="onParticipantChange">
-          <view class="picker">{{selectedParticipantIndex < participantList.length ? participantList[selectedParticipantIndex].nickName : '选择队友'}}</view>
-        </picker>
-      </view>
     </view>
 
-    <!-- 第三行：日期星期 + 邀请队友 -->
-    <view class="third-row-v2">
-      <view class="date-info">
-        <text>{{currentDateStr}}</text>
+    <!-- 第二行：科目选择 + 打卡内容 + 检查结果 + AI 评分 -->
+    <view class="subject-action-row">
+      <picker class="subject-picker-compact" mode="selector" range="{{subjects}}" value="{{selectedSubjectIndex}}" bindchange="onSubjectChange">
+        <view class="picker-value-compact">{{subjects[selectedSubjectIndex]}}</view>
+      </picker>
+      <view class="action-links-compact">
+        <text class="action-link-compact" bindtap="viewLatestMediaOrTip">打卡内容</text>
+        <text class="action-divider-compact">|</text>
+        <text class="action-link-compact" bindtap="viewLatestCheckResultOrTip">检查结果</text>
       </view>
-      <view class="invite-section">
-        <button wx:if="{{isProfileInitial}}" class="invite-btn-small" bindtap="showProfileModal">
-          邀请队友
-        </button>
-        <button wx:else class="invite-btn-small" open-type="share">
-          邀请队友
-        </button>
+      <view class="ai-evaluate-btn-compact" bindtap="onAIEvaluate">
+        <text>AI 评分</text>
       </view>
     </view>
-  </view>
-
-  <!-- 分隔线 -->
-  <view class="divider"></view>
-
-  <!-- 科目选择 -->
-  <view class="subject-section">
-    <text>科目：</text>
-    <picker mode="selector" range="{{subjects}}" value="{{selectedSubjectIndex}}" bindchange="onSubjectChange">
-      <view class="picker">{{subjects[selectedSubjectIndex]}}</view>
-    </picker>
   </view>
 
   <!-- 主打卡按钮 -->
@@ -67,31 +36,215 @@
     </view>
   </view>
 
-  <!-- 统一资料编辑/注册弹窗 -->
-  <view class="modal-mask" wx:if="{{showProfileModal}}">
-    <view class="modal-content">
-      <view class="modal-header">完善/修改资料</view>
-      <view class="modal-body">
-        <view class="avatar-section">
-          <button class="avatar-wrapper" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
-            <image class="avatar" src="{{tempAvatarUrl}}"></image>
-          </button>
-          <text class="avatar-tip">点击设置头像</text>
-        </view>
-        
-        <view class="input-group">
-          <text class="label">用户名</text>
-          <input type="nickname" class="modal-input" placeholder="请输入昵称" bindblur="onNicknameBlur" value="{{tempNickName}}" />
-        </view>
-        
-        <view class="input-group">
-          <text class="label">团队名称</text>
-          <input type="text" class="modal-input" placeholder="请输入团队名称" bindinput="onTeamNameInput" value="{{tempTeamName}}" />
-        </view>
+  <!-- 底部：日期和打卡记录本 -->
+  <view class="footer-date-history">
+    <view class="date-info-footer">{{currentDateStr}}</view>
+    <view class="footer-links">
+      <view class="footer-btn footer-btn-secondary" bindtap="goToHistory">📚 打卡记录本</view>
+      <view class="footer-btn footer-btn-primary" bindtap="goToMe">👤 我的</view>
+      <view class="footer-btn footer-btn-primary" bindtap="goToToolbox">🧰 工具箱</view>
+      <view class="footer-btn footer-btn-primary" bindtap="goToWordbook">📒 单词本</view>
+    </view>
+
+  </view>
+
+
+  <!-- 检查结果弹框（首页复用） -->
+  <view class="check-result-modal" wx:if="{{showCheckResultModal}}" bindtap="closeCheckResultModal">
+    <view class="check-result-content" catchtap="void" bindtap="void">
+      <view class="check-result-header">
+        <text class="check-result-title">📋 检查结果详情</text>
       </view>
-      <view class="modal-footer">
-        <button class="cancel-btn" bindtap="hideProfileModal">取消</button>
-        <button class="confirm-btn" bindtap="saveProfile">{{isProfileInitial ? '注册' : '保存'}}</button>
+      <scroll-view class="check-result-body" scroll-y="true">
+        <view class="ai-result-content">
+          <!-- 得分显示 -->
+          <view class="result-header">
+            <view class="score-display {{scoreClass}}">
+              <text class="score-number">{{score}}</text>
+              <text class="score-label">分</text>
+            </view>
+          </view>
+          
+          <!-- 识别内容 -->
+          <view class="result-section" wx:if="{{recognizedContent || totalQuestions > 0}}">
+            <view class="section-header">
+              <text class="section-icon">📝</text>
+              <text class="section-title">识别内容</text>
+            </view>
+            <view class="content-box highlighted" wx:if="{{recognizedContent}}">{{recognizedContent}}</view>
+            <view class="question-stats" wx:if="{{totalQuestions > 0}}">
+              <text class="stat-item">共 {{totalQuestions}} 道题</text>
+              <text class="stat-item correct">正确 {{correctQuestions}} 道</text>
+              <text class="stat-item wrong">错误 {{totalQuestions - correctQuestions}} 道</text>
+            </view>
+          </view>
+          
+          <!-- 判断结果 -->
+          <view class="result-section" wx:if="{{aiAnalysis}}">
+            <view class="section-header">
+              <text class="section-icon">{{score >= 6 ? '✅' : '⚠️'}}</text>
+              <text class="section-title">判断结果</text>
+            </view>
+            <view class="judgment-box {{score >= 6 ? 'correct' : 'incorrect'}}">
+              <text class="judgment-text">{{score >= 8 ? '✓ 非常棒！' : (score >= 6 ? '✓ 还不错' : '✗ 需要加油')}}</text>
+              <view class="judgment-detail">{{aiAnalysis}}</view>
+            </view>
+          </view>
+          
+          <!-- 检查结果详情 -->
+          <view class="result-section" wx:if="{{checkResults && checkResults.length > 0}}">
+            <view class="section-header">
+              <text class="section-icon">📋</text>
+              <text class="section-title">检查结果详情</text>
+            </view>
+            <view class="check-result-list">
+              <block wx:for="{{checkResults}}" wx:key="index" wx:for-item="result">
+                <view class="check-result-item {{result.is_correct ? 'correct' : 'wrong'}}">
+                  <view class="check-item-header">
+                    <text class="check-item-icon">{{result.is_correct ? '✅' : '❌'}}</text>
+                    <text class="check-item-status">{{result.is_correct ? '正确' : '错误'}}</text>
+                  </view>
+                  <view class="check-item-content">
+                    <view class="check-item-row">
+                      <text class="check-label">题目：</text>
+                      <text class="check-value">{{result.question}}</text>
+                    </view>
+                    <view class="check-item-row">
+                      <text class="check-label">你的答案：</text>
+                      <text class="check-value {{result.is_correct ? '' : 'wrong-answer'}}">{{result.user_answer}}</text>
+                    </view>
+                    <view class="check-item-row" wx:if="{{!result.is_correct}}">
+                      <text class="check-label">正确答案：</text>
+                      <text class="check-value correct-answer">{{result.correct_answer}}</text>
+                    </view>
+                  </view>
+                </view>
+              </block>
+            </view>
+          </view>
+          
+          <!-- 学习建议 -->
+          <view class="result-section" wx:if="{{suggestion}}">
+            <view class="section-header">
+              <text class="section-icon">💡</text>
+              <text class="section-title">学习建议</text>
+            </view>
+            <view class="suggestion-box">{{suggestion}}</view>
+          </view>
+        </view>
+      </scroll-view>
+      <button class="check-result-close-btn" bindtap="closeCheckResultModal">关闭</button>
+    </view>
+  </view>
+
+  <!-- AI 评分加载中弹框 -->
+  <view class="ai-loading-mask" wx:if="{{showAILoading}}">
+    <view class="ai-loading-content">
+      <view class="loading-header">正在检查评分...</view>
+      <view class="loading-spinner">
+        <view class="spinner-circle"></view>
+        <view class="loading-animal">{{currentAnimal}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- AI 评分结果自定义弹框（支持滚动） -->
+  <view class="ai-modal-mask" wx:if="{{showAIResultModal}}" catchtap="closeAIResultModal">
+    <view class="ai-modal-container" catchtap="stopPropagation">
+      <view class="ai-modal-header">
+        <text class="ai-modal-title">🎉 AI 评分完成</text>
+      </view>
+      <scroll-view class="ai-modal-content" scroll-y="true">
+        <view class="ai-modal-body">
+          <!-- 得分显示 -->
+          <view class="result-header">
+            <view class="score-display {{aiScoreClass}}">
+              <text class="score-number">{{aiScore}}</text>
+              <text class="score-label">分</text>
+            </view>
+          </view>
+          
+          <!-- 识别内容 -->
+          <view class="result-section" wx:if="{{aiRecognizedContent || aiTotalQuestions > 0}}">
+            <view class="section-header">
+              <text class="section-icon">📝</text>
+              <text class="section-title">识别内容</text>
+            </view>
+            <!-- 英语单词打卡特殊显示格式 -->
+            <view class="word-list" wx:if="{{aiWordList && aiWordList.length > 0}}">
+              <view class="word-item" wx:for="{{aiWordList}}" wx:key="index" wx:for-item="word">
+                <text class="word-cn">{{word.cn}}</text>
+                <text class="word-arrow">→</text>
+                <text class="word-en {{word.isCorrect ? 'correct' : 'wrong'}}">{{word.en}}</text>
+                <text class="word-status" wx:if="{{!word.isCorrect}}">({{word.correct}})</text>
+              </view>
+            </view>
+            <!-- 普通识别内容显示 -->
+            <view class="content-box highlighted" wx:if="{{aiRecognizedContent && (!aiWordList || aiWordList.length === 0)}}">{{aiRecognizedContent}}</view>
+            <view class="question-stats" wx:if="{{aiTotalQuestions > 0}}">
+              <text class="stat-item">共 {{aiTotalQuestions}} 道题</text>
+              <text class="stat-item correct">正确 {{aiCorrectQuestions}} 道</text>
+              <text class="stat-item wrong">错误 {{aiTotalQuestions - aiCorrectQuestions}} 道</text>
+            </view>
+          </view>
+          
+          <!-- 判断结果 -->
+          <view class="result-section" wx:if="{{aiJudgment}}">
+            <view class="section-header">
+              <text class="section-icon">{{aiScore >= 6 ? '✅' : '⚠️'}}</text>
+              <text class="section-title">判断结果</text>
+            </view>
+            <view class="judgment-box {{aiScore >= 6 ? 'correct' : 'incorrect'}}">
+              <text class="judgment-text">{{aiScore >= 8 ? '✓ 非常棒！' : (aiScore >= 6 ? '✓ 还不错' : '✗ 需要加油')}}</text>
+              <view class="judgment-detail">{{aiJudgment}}</view>
+            </view>
+          </view>
+          
+          <!-- 检查结果详情 -->
+          <view class="result-section" wx:if="{{aiCheckResults && aiCheckResults.length > 0}}">
+            <view class="section-header">
+              <text class="section-icon">📋</text>
+              <text class="section-title">检查结果详情</text>
+            </view>
+            <view class="check-result-list">
+              <block wx:for="{{aiCheckResults}}" wx:key="index" wx:for-item="result">
+                <view class="check-result-item {{result.is_correct ? 'correct' : 'wrong'}}">
+                  <view class="check-item-header">
+                    <text class="check-item-icon">{{result.is_correct ? '✅' : '❌'}}</text>
+                    <text class="check-item-status">{{result.is_correct ? '正确' : '错误'}}</text>
+                  </view>
+                  <view class="check-item-content">
+                    <view class="check-item-row">
+                      <text class="check-label">题目：</text>
+                      <text class="check-value">{{result.question}}</text>
+                    </view>
+                    <view class="check-item-row">
+                      <text class="check-label">你的答案：</text>
+                      <text class="check-value {{result.is_correct ? '' : 'wrong-answer'}}">{{result.user_answer}}</text>
+                    </view>
+                    <view class="check-item-row" wx:if="{{!result.is_correct}}">
+                      <text class="check-label">正确答案：</text>
+                      <text class="check-value correct-answer">{{result.correct_answer}}</text>
+                    </view>
+                  </view>
+                </view>
+              </block>
+            </view>
+          </view>
+          
+          <!-- 学习建议 -->
+          <view class="result-section" wx:if="{{aiSuggestion}}">
+            <view class="section-header">
+              <text class="section-icon">💡</text>
+              <text class="section-title">学习建议</text>
+            </view>
+            <view class="suggestion-box">{{aiSuggestion}}</view>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="ai-modal-footer">
+        <button class="ai-modal-btn ai-modal-btn-outline" wx:if="{{fileType === 'image'}}" bindtap="viewOriginalImage">查看原图</button>
+        <button class="ai-modal-btn ai-modal-btn-primary" bindtap="goToHistoryFromModal">查看记录</button>
       </view>
     </view>
   </view>

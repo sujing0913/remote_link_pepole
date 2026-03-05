@@ -10,6 +10,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
  * 输入参数:
  * - fileID: 云存储文件 ID (推荐)
  * - imgUrl: 图片 URL (可选，与 fileID 二选一)
+ * - text: 纯文本输入（可选，走文本模型能力；与 fileID/imgUrl 二选一）
  * - userPrompt: 用户自定义提示词 (可选)
  */
 exports.main = async (event, context) => {
@@ -17,17 +18,20 @@ exports.main = async (event, context) => {
   console.log('输入参数:', JSON.stringify({
     fileID: event.fileID,
     imgUrl: event.imgUrl ? 'provided' : 'not provided',
+    text: event.text ? String(event.text).slice(0, 50) + '...' : 'not provided',
     userPrompt: event.userPrompt || 'default'
   }));
 
-  const { fileID, imgUrl: inputImgUrl, userPrompt } = event;
+  const { fileID, imgUrl: inputImgUrl, userPrompt, text } = event;
 
-  // 参数校验
-  if (!fileID && !inputImgUrl) {
-    console.error('缺少文件 ID 或图片 URL');
+  // 参数校验：支持图片（fileID/imgUrl）或纯文本（text）二选一
+  const hasImage = !!(fileID || inputImgUrl);
+  const hasText = !!(text && String(text).trim());
+  if (!hasImage && !hasText) {
+    console.error('缺少文件 ID、图片 URL 或文本内容');
     return {
       success: false,
-      error: '缺少必要参数：需要提供 fileID 或 imgUrl',
+      error: '缺少必要参数：需要提供 fileID / imgUrl / text',
       errorCode: 'MISSING_INPUT'
     };
   }
@@ -95,35 +99,51 @@ exports.main = async (event, context) => {
       rejectUnauthorized: false
     });
 
+    // 根据输入类型构建 content：图片 + prompt，或纯文本 + prompt
+    const content = [];
+    if (hasImage) {
+      content.push({
+        type: 'input_image',
+        image_url: imageUrl
+      });
+    }
+
+    if (hasText) {
+      // 让模型先从 text 中提取有效单词/内容，再执行 prompt 要求的输出格式
+      content.push({
+        type: 'input_text',
+        text: `以下是用户输入的文本内容：\n${String(text).trim()}\n\n---\n${prompt}`
+      });
+    } else {
+      content.push({
+        type: 'input_text',
+        text: prompt
+      });
+    }
+
     const response = await axios.post(
       `${baseUrl}/responses`,
       {
         model: model,
         input: [
           {
-            role: "user",
-            content: [
-              {
-                type: "input_image",
-                image_url: imageUrl
-              },
-              {
-                type: "input_text",
-                text: prompt
-              }
-            ]
+            role: 'user',
+            content
           }
         ]
       },
       {
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
+          Authorization: `Bearer ${apiKey}`
         },
         httpsAgent: httpsAgent,
         timeout: 30000 // 30 秒超时
       }
     );
+
+    console.log('豆包 API 响应 headers x-request-id:', response.headers && (response.headers['x-request-id'] || response.headers['x-tt-logid']));
+    console.log('豆包 API raw response:', JSON.stringify(response.data));
 
     console.log('豆包 API 响应状态:', response.status);
     console.log('豆包 API 响应数据:', JSON.stringify(response.data));
@@ -230,11 +250,18 @@ exports.main = async (event, context) => {
     }
 
     // 5. 返回结果给小程序前端
+    // 为了兼容 wordAnalyze 的解析逻辑：优先让 data 是“模型输出的 JSON 对象”
+    // 同时保留原始 output 以便调试
     return {
       success: true,
       code: 0,
       data: result,
       message: 'success',
+      raw: {
+        id: response.data && response.data.id,
+        model: response.data && response.data.model,
+        output: response.data && response.data.output
+      },
       usage: response.data.usage || {}
     };
 

@@ -1,0 +1,9 @@
+{
+  "name": "getMyProfile",
+  "version": "1.0.0",
+  "description": "Get current user's profile from users collection (by _openid/openid), return role/role_create_time/nickName/avatarUrl/bind_code/bind_code_create_time",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "^3.0.0"
+  }
+}

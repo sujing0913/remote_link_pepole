@@ -1,0 +1,54 @@
+<view class="container">
+  <view class="title">绑定监督人</view>
+
+
+  <view class="role-tabs">
+    <view
+      class="tab {{roleTab === 'parent' ? 'active' : ''}} {{disableParentTab ? 'disabled' : ''}}"
+      bindtap="selectParent"
+    >
+      我是家长
+    </view>
+    <view class="tab {{roleTab === 'child' ? 'active' : ''}}" bindtap="selectChild">我是孩子</view>
+  </view>
+
+  <!-- 家长：展示永久固定6位绑定码 -->
+  <view wx:if="{{roleTab === 'parent' && !disableParentTab}}" class="panel">
+    <view class="panel-title">我的绑定码（永久固定）</view>
+
+    <view class="code-box">
+      <text class="code">{{bindCode || '------'}}</text>
+    </view>
+
+    <view class="tips">
+      <view class="tip">1. 让孩子在“我是孩子”里输入此 6 位码完成绑定</view>
+      <view class="tip">2. 一个家长可绑定多个孩子</view>
+    </view>
+
+    <button class="primary-btn" bindtap="copyCode" disabled="{{!bindCode}}">复制绑定码</button>
+  </view>
+
+
+  <!-- 孩子：输入家长绑定码 -->
+  <view wx:if="{{roleTab === 'child'}}" class="panel">
+    <view class="panel-title">输入家长绑定码</view>
+
+    <input
+      class="input"
+      type="number"
+      maxlength="6"
+      placeholder="请输入6位数字绑定码"
+      value="{{inputCode}}"
+      bindinput="onInputCode"
+    />
+
+    <button class="primary-btn" bindtap="submitBind" disabled="{{inputCode.length !== 6 || submitting}}">
+      {{submitting ? '绑定中...' : '提交绑定'}}
+    </button>
+
+    <view class="tips">
+      <view class="tip">1. 不绑定也可直接打卡使用</view>
+      <view class="tip">2. 一个孩子可绑定多个家长</view>
+    </view>
+  </view>
+</view>

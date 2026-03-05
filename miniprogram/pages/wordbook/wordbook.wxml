@@ -1,0 +1,140 @@
+<view class="container">
+  <!-- 顶部过滤与添加 -->
+  <view class="topbar">
+    <view class="filters">
+      <view class="filter">
+        <picker mode="selector" range="{{monthFilterOptions}}" value="{{monthFilterIndex}}" bindchange="onMonthFilterChange">
+          <view class="picker dropdown filter-dd">选择年月：{{monthFilterOptions[monthFilterIndex]}} <text class="arrow">▼</text></view>
+        </picker>
+      </view>
+
+      <view class="filter">
+        <picker mode="selector" range="{{rememberFilterOptions}}" value="{{rememberFilterIndex}}" bindchange="onRememberFilterChange">
+          <view class="picker dropdown filter-dd">是否记会：{{rememberFilterOptions[rememberFilterIndex]}} <text class="arrow">▼</text></view>
+        </picker>
+      </view>
+    </view>
+
+    <button class="add-btn" size="mini" bindtap="openAddModal">添加单词</button>
+  </view>
+
+  <!-- 空态 -->
+  <view class="empty" wx:if="{{groupedList.length === 0}}">
+    <text class="empty-text">暂无单词，点击右上角“添加单词”开始吧</text>
+  </view>
+
+  <!-- 按月分组列表 -->
+  <scroll-view class="list" scroll-y="true" wx:else>
+    <block wx:for="{{groupedList}}" wx:key="month">
+      <view class="month-section">
+        <view class="month-title" data-month="{{item.month}}" bindtap="toggleMonth">
+          <text class="month-text">{{item.month}}（{{item.items.length}}）</text>
+          <text class="month-arrow">{{collapsedMonths[item.month] ? '▶' : '▼'}}</text>
+        </view>
+
+        <block wx:if="{{!collapsedMonths[item.month]}}">
+          <block wx:for="{{item.items}}" wx:key="_id">
+            <view class="card {{!item.remembered ? 'card-unremembered' : ''}}">
+            <view class="row row-head">
+              <view class="word">{{item.word}}</view>
+              <view class="actions">
+                <button class="mini-btn" size="mini" data-id="{{item._id}}" bindtap="playPronunciation">读音</button>
+              </view>
+            </view>
+
+            <view class="row">
+              <text class="label">中文意思</text>
+              <text class="value">{{item.meaning}}</text>
+            </view>
+
+            <view class="row" wx:if="{{item.example}}">
+              <text class="label">常见组句</text>
+              <text class="value">{{item.example}}</text>
+            </view>
+
+            <view class="row row-inline">
+              <text class="label">是否记会</text>
+              <picker mode="selector" range="{{rememberOptions}}" value="{{item.rememberIndex}}" data-id="{{item._id}}" bindchange="onRememberChange">
+                <view class="picker dropdown">{{rememberOptions[item.rememberIndex]}} <text class="arrow">▼</text></view>
+              </picker>
+              <text class="hint" wx:if="{{!item.remembered}}">默认：否</text>
+            </view>
+
+            <view class="row">
+              <text class="label">备注</text>
+              <textarea
+                class="remark"
+                auto-height
+                placeholder="可填写备注..."
+                value="{{item.remark}}"
+                data-id="{{item._id}}"
+                bindblur="onRemarkBlur"
+              />
+            </view>
+            </view>
+          </block>
+        </block>
+      </view>
+    </block>
+  </scroll-view>
+
+  <!-- 添加单词弹框 -->
+  <view class="modal-mask" wx:if="{{showAddModal}}" catchtap="closeAddModal">
+    <view class="modal" catchtap="stopPropagation">
+      <view class="modal-title">添加单词</view>
+
+      <view class="modal-row">
+        <input class="input" placeholder="请输入单词（可粘贴一段文本）" value="{{inputText}}" bindinput="onInputText" />
+        <button class="ai-btn" size="mini" bindtap="onAIAnalyze" loading="{{aiLoading}}">AI分析</button>
+      </view>
+
+      <!-- 加载状态（对齐 scanWord 的交互） -->
+      <view class="loading-state" wx:if="{{aiLoading}}">
+        <view class="loading-spinner"></view>
+        <text class="loading-text">正在识别单词...</text>
+      </view>
+
+      <!-- AI 识别结果（对齐 scanWord 的显示结构） -->
+      <scroll-view class="ai-result-scroll" scroll-y="true" wx:if="{{!aiLoading && aiPreview}}">
+        <view class="word-result">
+          <view class="word-header">
+            <view class="word-main">
+              <text class="word-text">{{aiPreview.word}}</text>
+              <button class="play-audio-btn" bindtap="playPreviewAudio" wx:if="{{aiPreview.pronunciationUrl}}">
+                <text class="audio-icon">🔊</text>
+              </button>
+            </view>
+            <view class="phonetic-container">
+              <text class="phonetic-symbol" wx:if="{{aiPreview.phonetic}}">/{{aiPreview.phonetic}}/</text>
+            </view>
+          </view>
+
+          <view class="word-section">
+            <view class="section-title">📝 单词意思</view>
+            <view class="section-content">{{aiPreview.meaning}}</view>
+          </view>
+
+          <view class="word-section" wx:if="{{aiPreview.sentences && aiPreview.sentences.length > 0}}">
+            <view class="section-title">💬 常见组句</view>
+            <view class="sentence-list">
+              <view class="sentence-item" wx:for="{{aiPreview.sentences}}" wx:key="index" wx:for-item="sentence">
+                <view class="sentence-en">{{sentence.en}}</view>
+                <view class="sentence-cn">{{sentence.cn}}</view>
+              </view>
+            </view>
+          </view>
+
+          <view class="word-section" wx:if="{{aiPreview.memoryTips}}">
+            <view class="section-title">🧠 记忆技巧</view>
+            <view class="section-content memory-tip">{{aiPreview.memoryTips}}</view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <view class="modal-actions">
+        <button class="cancel" bindtap="closeAddModal">取消</button>
+        <button class="confirm" bindtap="confirmAdd" disabled="{{!aiPreview || !aiPreview.word}}">加入列表</button>
+      </view>
+    </view>
+  </view>
+</view>
