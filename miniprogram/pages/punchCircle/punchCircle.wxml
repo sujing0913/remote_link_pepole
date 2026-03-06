@@ -1,0 +1,124 @@
+<view class="container">
+  <!-- 顶部标题 -->
+  <view class="header">
+    <text class="title">今日打卡圈</text>
+    <text class="subtitle">看看大家今天的学习情况</text>
+  </view>
+
+  <!-- 加载中 -->
+  <view class="loading" wx:if="{{loading}}">
+    <view class="loading-spinner"></view>
+    <text>加载中...</text>
+  </view>
+
+  <!-- 打卡圈列表 -->
+  <scroll-view class="post-list" scroll-y="true" wx:if="{{!loading && posts.length > 0}}">
+    <block wx:for="{{posts}}" wx:key="_id" wx:for-item="post">
+      <view class="post-card">
+        <!-- 用户信息行 -->
+        <view class="user-row">
+          <!-- 头像 -->
+          <view class="avatar">
+            <image wx:if="{{post.userInfo.avatarUrl}}" src="{{post.userInfo.avatarUrl}}" mode="aspectFill"></image>
+            <text wx:else class="avatar-placeholder">👤</text>
+          </view>
+          <!-- 昵称和科目 -->
+          <view class="user-info">
+            <text class="nickname">{{post.userInfo.nickName}}</text>
+            <view class="subject-tag">
+              <text>{{post.subject}}</text>
+            </view>
+          </view>
+          <!-- 时间 -->
+          <text class="post-time">{{formatTime(post.createTime)}}</text>
+        </view>
+
+        <!-- 打卡内容 -->
+        <view class="content-section">
+          <!-- 如果有媒体内容 -->
+          <view class="media-content" wx:if="{{post.mediaUrl}}">
+            <!-- 图片类型 -->
+            <image 
+              class="post-image" 
+              src="{{post.mediaUrl}}" 
+              mode="aspectFill" 
+              bindtap="previewMedia" 
+              data-url="{{post.mediaUrl}}"
+              data-post="{{post}}"
+              wx:if="{{post.mediaType === 'image'}}"
+            ></image>
+            <!-- 视频类型 -->
+            <video 
+              class="post-video" 
+              src="{{post.mediaUrl}}" 
+              controls 
+              show-center-play-btn
+              enable-progress-gesture
+              object-fit="contain"
+              bindtap="previewMedia"
+              data-url="{{post.mediaUrl}}"
+              data-post="{{post}}"
+              wx:elif="{{post.mediaType === 'video'}}"
+            ></video>
+          </view>
+          
+          <!-- 显示文字内容 -->
+          <view class="text-content" wx:if="{{post.recognizedContent}}">
+            <text>{{post.recognizedContent}}</text>
+          </view>
+        </view>
+
+        <!-- 互动区域 -->
+        <view class="interaction-row">
+          <!-- 点赞按钮 -->
+          <view class="action-btn like-btn" bindtap="onLike" data-post-id="{{post._id}}" data-is-liked="{{post.likes.includes(currentUserOpenId)}}">
+            <text class="{{post.likes.includes(currentUserOpenId) ? 'liked' : ''}}">
+              {{post.likes.includes(currentUserOpenId) ? '❤️' : '🤍'}} {{post.likeCount || 0}}
+            </text>
+          </view>
+          
+          <!-- 评论按钮 -->
+          <view class="action-btn comment-btn" bindtap="onComment" data-post-id="{{post._id}}">
+            <text>💬 {{post.commentCount || 0}}</text>
+          </view>
+        </view>
+
+        <!-- 评论列表 -->
+        <view class="comments-section" wx:if="{{post.comments && post.comments.length > 0}}">
+          <block wx:for="{{post.comments}}" wx:key="_id" wx:for-item="comment">
+            <view class="comment-item">
+              <text class="comment-user">{{comment.userInfo.nickName}}:</text>
+              <text class="comment-content">{{comment.content}}</text>
+            </view>
+          </block>
+        </view>
+      </view>
+    </block>
+  </scroll-view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{!loading && posts.length === 0}}">
+    <text class="empty-icon">📭</text>
+    <text class="empty-text">今天还没有人打卡</text>
+    <text class="empty-hint">快去打卡成为第一个吧！</text>
+  </view>
+
+  <!-- 评论弹框 -->
+  <view class="comment-modal-mask" wx:if="{{showCommentModal}}" bindtap="closeCommentModal">
+    <view class="comment-modal" catchtap="void">
+      <view class="comment-header">
+        <text>发表评论</text>
+        <text class="close-btn" bindtap="closeCommentModal">✕</text>
+      </view>
+      <textarea 
+        class="comment-input" 
+        placeholder="写下你的评论..." 
+        maxlength="200"
+        bindinput="onCommentInput"
+      ></textarea>
+      <view class="comment-submit">
+        <button class="submit-btn" bindtap="submitComment">提交</button>
+      </view>
+    </view>
+  </view>
+</view>

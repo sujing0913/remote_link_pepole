@@ -8,7 +8,7 @@ Page({
     totalCount: 0,
     isTodayDone: false,
     loading: false,
-    subjects: ['语文', '数学', '英语'],
+    subjects: ['语文', '数学', '英语', '减肥', '生活', '健身', '其他'],
     selectedSubjectIndex: 2, // 默认英语
     currentUserOpenId: '', // 当前登录用户的 openId
     currentDateStr: '', // 当前日期字符串
@@ -362,6 +362,13 @@ Page({
     });
   },
 
+  // 跳转到打卡圈页面
+  goToPunchCircle: function() {
+    wx.navigateTo({
+      url: '/pages/punchCircle/punchCircle'
+    });
+  },
+
   // 打卡逻辑
   onPunch: function() {
     const that = this;
@@ -444,6 +451,46 @@ Page({
         } catch (e) {
           // 通知失败不影响打卡主流程
           console.warn('通知家长失败（忽略）', e);
+        }
+
+        // 打卡成功后，自动发布到打卡圈
+        try {
+          // 先确保 punch_circle 集合存在
+          await wx.cloud.callFunction({ name: 'initDb' });
+          
+          // 获取用户信息
+          const { result: user } = await wx.cloud.callFunction({ name: 'getUserInfo' });
+          
+          // 构建用户信息对象
+          const userInfo = user ? {
+            nickName: user.nickName || '匿名用户',
+            avatarUrl: user.avatarUrl || ''
+          } : {
+            nickName: '匿名用户',
+            avatarUrl: ''
+          };
+          
+          // 添加到打卡圈
+          await db.collection('punch_circle').add({
+            data: {
+              openId: currentUserOpenId,
+              userInfo: userInfo,
+              recordId: recordId,
+              mediaUrl: fileID,
+              mediaType: fileType,
+              subject: subject,
+              recognizedContent: '',
+              createTime: db.serverDate(),
+              likes: [],
+              likeCount: 0,
+              comments: [],
+              commentCount: 0
+            }
+          });
+          console.log('发布到打卡圈成功');
+        } catch (e) {
+          // 发布失败不影响打卡主流程
+          console.warn('发布到打卡圈失败（忽略）', e);
         }
 
         // 不再自动调用 AI 评分，等待用户手动点击

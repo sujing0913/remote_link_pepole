@@ -13,7 +13,7 @@ Page({
     currentUserOpenId: '',
     yearMonthRange: [[], []],
     selectedYearMonth: [0, 0],
-    subjectRange: ['语文', '数学', '英语'], // 与首页保持一致
+    subjectRange: ['语文', '数学', '英语', '减肥', '生活', '健身', '其他'], // 与首页保持一致
     selectedSubjectIndex: 2, // 默认选中英语（与首页一致）
 
     // ====== 亲子绑定：家长端孩子筛选 ======
@@ -33,8 +33,28 @@ Page({
     correctQuestions: 0,
     aiAnalysis: '',
     suggestion: '',
-    checkResults: []
+    checkResults: [],
+    // AI 评分弹框数据
+    showAIResultModal: false,
+    aiScore: 0,
+    aiScoreClass: 'score-low',
+    aiRecognizedContent: '',
+    aiWordList: [],
+    aiTotalQuestions: 0,
+    aiCorrectQuestions: 0,
+    aiJudgment: '',
+    aiSuggestion: '',
+    aiCheckResults: [],
+    fileType: '',
+    fileID: '',
+    // AI 评分加载动画数据
+    showAILoading: false,
+    currentAnimal: '🐱',
+    animalTimer: null
   },
+
+  // 可爱的小动物头像列表
+  animalAvatars: ['🐱', '🐶', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🦆', '🦅', '🦉', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞', '🐜', '🦗', '🕷️', '🦂'],
 
   onLoad: async function(options) {
     try {
@@ -474,6 +494,214 @@ Page({
   closeAIResultModal: function() {
     this.setData({
       showAIResultModal: false
+    });
+  },
+
+  // AI 评分按钮点击事件
+  onAIEvaluate: async function(e) {
+    const item = e.currentTarget.dataset.item;
+    
+    if (!item) {
+      wx.showToast({ title: '记录不存在', icon: 'none' });
+      return;
+    }
+    
+    if (item.mediaType !== 'image') {
+      wx.showToast({ title: '仅支持图片评分', icon: 'none' });
+      return;
+    }
+    
+    // 调用 AI 评分
+    this.callAIEvaluate(item._id, item.subject, item.mediaType, item.mediaUrl);
+  },
+
+  // AI 评分调用函数
+  callAIEvaluate: function(recordId, subject, fileType, fileID) {
+    const that = this;
+    
+    // 显示加载动画
+    that.showAILoadingAnim();
+    
+    // 直接调用 doubaoAI 云函数进行图片识别和分析
+    wx.cloud.callFunction({
+      name: 'doubaoAI',
+      data: {
+        fileID: fileID,
+        userPrompt: `你是一位严格的${subject}老师，请识别图片中的学习打卡内容。请按以下 JSON 格式回复（只返回 JSON，不要其他文字）：
+{
+  "recognized_content": "识别到的打卡内容（如：1+1=3, 2+2=4, 3+3=7）",
+  "total_questions": 题目总数量（数字，如 5）,
+  "correct_questions": 正确题目数量（数字，如 3）,
+  "score": 得分（数字，计算公式：correct_questions/total_questions*10，保留整数）,
+  "judgment": "对打卡内容进行判断（如：共 5 道题，正确 3 道，错误 2 道，需要加强练习）",
+  "suggestion": "具体的学习建议",
+  "check_results": [
+    {"question": "第 1 题题目内容", "user_answer": "用户写的答案", "correct_answer": "正确答案", "is_correct": false},
+    {"question": "第 2 题题目内容", "user_answer": "用户写的答案", "correct_answer": "正确答案", "is_correct": true}
+  ]
+}
+
+注意：
+1. 请仔细识别图片中的每一道题目
+2. 准确判断每道题的对错
+3. score = Math.round(correct_questions / total_questions * 10)
+4. 如果只有 1 道题，正确得 10 分，错误得 0 分
+5. check_results 必须包含每道题的详细信息：question(题目)、user_answer(用户答案)、correct_answer(正确答案)、is_correct(是否正确)`
+      },
+      timeout: 60000, // 60 秒超时
+      success: (aiRes) => {
+        that.hideAILoadingAnim();
+        console.log('AI 分析完成:', aiRes);
+        
+        // 检查返回结果
+        if (aiRes.result && aiRes.result.success && aiRes.result.data) {
+          const result = aiRes.result.data;
+          // 保存 AI 结果到数据库
+          that.saveAIResultToDB(recordId, result, subject);
+          // 显示分析结果弹框
+          that.showAIResultModal(result, fileType, fileID, subject);
+        } else {
+          // AI 分析失败
+          console.log('AI 分析失败:', aiRes.result);
+          wx.showToast({
+            title: 'AI 分析失败，请重试',
+            icon: 'none',
+            duration: 2000
+          });
+        }
+      },
+      fail: (aiErr) => {
+        that.hideAILoadingAnim();
+        console.error('AI 分析失败:', aiErr);
+        wx.showToast({
+          title: 'AI 分析失败：' + (aiErr.errMsg || '未知错误'),
+          icon: 'none',
+          duration: 2000
+        });
+      }
+    });
+  },
+
+  // 保存 AI 分析结果到数据库
+  saveAIResultToDB: function(recordId, result, subject) {
+    const score = result.score || 0;
+    const suggestion = result.suggestion || '';
+    const judgment = result.judgment || '';
+    const recognizedContent = result.recognized_content || '';
+    const totalQuestions = result.total_questions || 0;
+    const correctQuestions = result.correct_questions || 0;
+    const checkResults = result.check_results || [];
+
+    db.collection('check_ins').doc(recordId).update({
+      data: {
+        score: score,
+        suggestion: suggestion,
+        aiAnalysis: judgment,
+        recognizedContent: recognizedContent,
+        totalQuestions: totalQuestions,
+        correctQuestions: correctQuestions,
+        checkResults: checkResults,
+        analyzedAt: db.serverDate()
+      },
+      success: (res) => {
+        console.log('AI 结果保存成功');
+        // 刷新记录列表
+        this.fetchRecords();
+      },
+      fail: (err) => {
+        console.error('AI 结果保存失败', err);
+      }
+    });
+  },
+
+  // 显示 AI 分析结果弹框
+  showAIResultModal: function(result, fileType, fileID, subject) {
+    const that = this;
+    
+    const score = result.score || 0;
+    const recognizedContent = result.recognized_content || '';
+    const judgment = result.judgment || '';
+    const suggestion = result.suggestion || '';
+    const totalQuestions = result.total_questions || 0;
+    const correctQuestions = result.correct_questions || 0;
+    const checkResults = result.check_results || [];
+    
+    // 根据得分计算颜色
+    let scoreClass = 'score-low';
+    if (score >= 8) {
+      scoreClass = 'score-high';
+    } else if (score >= 6) {
+      scoreClass = 'score-mid';
+    }
+    
+    // 解析英语单词打卡内容（汉译英格式）
+    let wordList = [];
+    if (subject === '英语' && recognizedContent) {
+      wordList = this.parseWordList(recognizedContent, checkResults);
+    }
+    
+    // 设置数据到页面
+    that.setData({
+      aiScore: score,
+      aiScoreClass: scoreClass,
+      aiRecognizedContent: recognizedContent,
+      aiWordList: wordList,
+      aiTotalQuestions: totalQuestions,
+      aiCorrectQuestions: correctQuestions,
+      aiJudgment: judgment,
+      aiSuggestion: suggestion,
+      aiCheckResults: checkResults,
+      showAIResultModal: true,
+      fileType: fileType,
+      fileID: fileID
+    });
+  },
+
+  // 显示 AI 加载动画
+  showAILoadingAnim: function() {
+    const that = this;
+    
+    // 随机选择一个小动物
+    const randomAnimal = this.animalAvatars[Math.floor(Math.random() * this.animalAvatars.length)];
+    
+    this.setData({
+      showAILoading: true,
+      currentAnimal: randomAnimal
+    });
+    
+    // 每 0.8 秒切换一个小动物
+    const timer = setInterval(() => {
+      const newAnimal = this.animalAvatars[Math.floor(Math.random() * this.animalAvatars.length)];
+      that.setData({
+        currentAnimal: newAnimal
+      });
+    }, 800);
+    
+    this.setData({
+      animalTimer: timer
+    });
+  },
+
+  // 隐藏 AI 加载动画
+  hideAILoadingAnim: function() {
+    if (this.data.animalTimer) {
+      clearInterval(this.data.animalTimer);
+      this.setData({
+        animalTimer: null
+      });
+    }
+    
+    this.setData({
+      showAILoading: false
+    });
+  },
+
+  // 查看原图
+  viewOriginalImage: function() {
+    const that = this;
+    wx.previewImage({
+      urls: [that.data.fileID],
+      current: that.data.fileID
     });
   }
 });

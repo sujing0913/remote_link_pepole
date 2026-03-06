@@ -1,9 +1,9 @@
 <view class="container">
   <!-- 顶部查询区域 -->
   <view class="header">
-    <!-- 第一行：今日行动 -->
+    <!-- 第一行：今日打卡状态 -->
     <view class="today-action-row">
-      <view class="info-block today-block">
+      <view class="info-block today-block centered">
         <text>
           <text class="label">今日打卡：</text>
           <text class="value {{isTodayDone ? 'done' : 'pending'}}">{{subjects[selectedSubjectIndex]}}-{{isTodayDone ? '已完成' : '未完成'}}</text>
@@ -11,19 +11,14 @@
       </view>
     </view>
 
-    <!-- 第二行：科目选择 + 打卡内容 + 检查结果 + AI 评分 -->
+    <!-- 第二行：日期时间 + 科目选择 + 个人设置 -->
     <view class="subject-action-row">
+      <text class="date-time-text">{{currentDateStr}}</text>
+      <text class="subject-label">打卡科目：</text>
       <picker class="subject-picker-compact" mode="selector" range="{{subjects}}" value="{{selectedSubjectIndex}}" bindchange="onSubjectChange">
         <view class="picker-value-compact">{{subjects[selectedSubjectIndex]}}</view>
       </picker>
-      <view class="action-links-compact">
-        <text class="action-link-compact" bindtap="viewLatestMediaOrTip">打卡内容</text>
-        <text class="action-divider-compact">|</text>
-        <text class="action-link-compact" bindtap="viewLatestCheckResultOrTip">检查结果</text>
-      </view>
-      <view class="ai-evaluate-btn-compact" bindtap="onAIEvaluate">
-        <text>AI 评分</text>
-      </view>
+      <text class="settings-link" bindtap="goToMe">个人设置</text>
     </view>
   </view>
 
@@ -34,18 +29,19 @@
         <text>打卡</text>
       </button>
     </view>
+    <!-- 打卡圈按钮 -->
+    <view class="punch-circle-btn-purple" bindtap="goToPunchCircle">
+      <text class="punch-circle-text">打卡圈</text>
+    </view>
   </view>
 
-  <!-- 底部：日期和打卡记录本 -->
+  <!-- 底部：打卡记录本等按钮 -->
   <view class="footer-date-history">
-    <view class="date-info-footer">{{currentDateStr}}</view>
     <view class="footer-links">
-      <view class="footer-btn footer-btn-secondary" bindtap="goToHistory">📚 打卡记录本</view>
-      <view class="footer-btn footer-btn-primary" bindtap="goToMe">👤 我的</view>
-      <view class="footer-btn footer-btn-primary" bindtap="goToToolbox">🧰 工具箱</view>
-      <view class="footer-btn footer-btn-primary" bindtap="goToWordbook">📒 单词本</view>
+      <view class="footer-btn footer-btn-green" bindtap="goToHistory">📚 打卡记录本</view>
+      <view class="footer-btn footer-btn-green" bindtap="goToToolbox">🧰 工具箱</view>
+      <view class="footer-btn footer-btn-green" bindtap="goToWordbook">📒 单词本</view>
     </view>
-
   </view>
 
 

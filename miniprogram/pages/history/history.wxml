@@ -76,6 +76,7 @@
           <view class="table-col-media">内容</view>
           <view class="table-col-result">评价</view>
           <view class="table-col-suggest">建议</view>
+          <view class="table-col-ai">AI分析</view>
         </view>
         
         <!-- 表格内容 -->
@@ -108,6 +109,11 @@
                   <text class="btn-icon">💡</text>
                 </button>
                 <text class="no-data" wx:else>-</text>
+              </view>
+              <view class="table-col-ai">
+                <button class="action-btn ai-btn" bindtap="onAIEvaluate" data-item="{{item}}">
+                  <text class="btn-icon">🤖</text>
+                </button>
               </view>
             </view>
           </block>
@@ -215,6 +221,118 @@
         </view>
       </scroll-view>
       <button class="check-result-close-btn" bindtap="closeCheckResultModal">关闭</button>
+    </view>
+  </view>
+
+  <!-- AI 评分加载中弹框 -->
+  <view class="ai-loading-mask" wx:if="{{showAILoading}}">
+    <view class="ai-loading-content">
+      <view class="loading-header">正在检查评分...</view>
+      <view class="loading-spinner">
+        <view class="spinner-circle"></view>
+        <view class="loading-animal">{{currentAnimal}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- AI 评分结果自定义弹框（支持滚动） -->
+  <view class="ai-modal-mask" wx:if="{{showAIResultModal}}" catchtap="closeAIResultModal">
+    <view class="ai-modal-container" catchtap="stopPropagation">
+      <view class="ai-modal-header">
+        <text class="ai-modal-title">🎉 AI 评分完成</text>
+      </view>
+      <scroll-view class="ai-modal-content" scroll-y="true">
+        <view class="ai-modal-body">
+          <!-- 得分显示 -->
+          <view class="result-header">
+            <view class="score-display {{aiScoreClass}}">
+              <text class="score-number">{{aiScore}}</text>
+              <text class="score-label">分</text>
+            </view>
+          </view>
+          
+          <!-- 识别内容 -->
+          <view class="result-section" wx:if="{{aiRecognizedContent || aiTotalQuestions > 0}}">
+            <view class="section-header">
+              <text class="section-icon">📝</text>
+              <text class="section-title">识别内容</text>
+            </view>
+            <!-- 英语单词打卡特殊显示格式 -->
+            <view class="word-list" wx:if="{{aiWordList && aiWordList.length > 0}}">
+              <view class="word-item" wx:for="{{aiWordList}}" wx:key="index" wx:for-item="word">
+                <text class="word-cn">{{word.cn}}</text>
+                <text class="word-arrow">→</text>
+                <text class="word-en {{word.isCorrect ? 'correct' : 'wrong'}}">{{word.en}}</text>
+                <text class="word-status" wx:if="{{!word.isCorrect}}">({{word.correct}})</text>
+              </view>
+            </view>
+            <!-- 普通识别内容显示 -->
+            <view class="content-box highlighted" wx:if="{{aiRecognizedContent && (!aiWordList || aiWordList.length === 0)}}">{{aiRecognizedContent}}</view>
+            <view class="question-stats" wx:if="{{aiTotalQuestions > 0}}">
+              <text class="stat-item">共 {{aiTotalQuestions}} 道题</text>
+              <text class="stat-item correct">正确 {{aiCorrectQuestions}} 道</text>
+              <text class="stat-item wrong">错误 {{aiTotalQuestions - aiCorrectQuestions}} 道</text>
+            </view>
+          </view>
+          
+          <!-- 判断结果 -->
+          <view class="result-section" wx:if="{{aiJudgment}}">
+            <view class="section-header">
+              <text class="section-icon">{{aiScore >= 6 ? '✅' : '⚠️'}}</text>
+              <text class="section-title">判断结果</text>
+            </view>
+            <view class="judgment-box {{aiScore >= 6 ? 'correct' : 'incorrect'}}">
+              <text class="judgment-text">{{aiScore >= 8 ? '✓ 非常棒！' : (aiScore >= 6 ? '✓ 还不错' : '✗ 需要加油')}}</text>
+              <view class="judgment-detail">{{aiJudgment}}</view>
+            </view>
+          </view>
+          
+          <!-- 检查结果详情 -->
+          <view class="result-section" wx:if="{{aiCheckResults && aiCheckResults.length > 0}}">
+            <view class="section-header">
+              <text class="section-icon">📋</text>
+              <text class="section-title">检查结果详情</text>
+            </view>
+            <view class="check-result-list">
+              <block wx:for="{{aiCheckResults}}" wx:key="index" wx:for-item="result">
+                <view class="check-result-item {{result.is_correct ? 'correct' : 'wrong'}}">
+                  <view class="check-item-header">
+                    <text class="check-item-icon">{{result.is_correct ? '✅' : '❌'}}</text>
+                    <text class="check-item-status">{{result.is_correct ? '正确' : '错误'}}</text>
+                  </view>
+                  <view class="check-item-content">
+                    <view class="check-item-row">
+                      <text class="check-label">题目：</text>
+                      <text class="check-value">{{result.question}}</text>
+                    </view>
+                    <view class="check-item-row">
+                      <text class="check-label">你的答案：</text>
+                      <text class="check-value {{result.is_correct ? '' : 'wrong-answer'}}">{{result.user_answer}}</text>
+                    </view>
+                    <view class="check-item-row" wx:if="{{!result.is_correct}}">
+                      <text class="check-label">正确答案：</text>
+                      <text class="check-value correct-answer">{{result.correct_answer}}</text>
+                    </view>
+                  </view>
+                </view>
+              </block>
+            </view>
+          </view>
+          
+          <!-- 学习建议 -->
+          <view class="result-section" wx:if="{{aiSuggestion}}">
+            <view class="section-header">
+              <text class="section-icon">💡</text>
+              <text class="section-title">学习建议</text>
+            </view>
+            <view class="suggestion-box">{{aiSuggestion}}</view>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="ai-modal-footer">
+        <button class="ai-modal-btn ai-modal-btn-outline" wx:if="{{fileType === 'image'}}" bindtap="viewOriginalImage">查看原图</button>
+        <button class="ai-modal-btn ai-modal-btn-primary" bindtap="closeAIResultModal">关闭</button>
+      </view>
     </view>
   </view>
 </view>

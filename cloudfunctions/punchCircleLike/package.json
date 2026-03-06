@@ -1,0 +1,12 @@
+{
+  "name": "punchCircleLike",
+  "version": "1.0.0",
+  "description": "打卡圈点赞功能",
+  "main": "index.js",
+  "scripts": {},
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}
