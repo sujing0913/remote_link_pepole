@@ -6,7 +6,7 @@
         <text>日期：</text>
         <picker mode="multiSelector" range="{{yearMonthRange}}" value="{{selectedYearMonth}}" bindchange="onYearMonthChange">
           <view class="picker">
-            {{yearMonthRange[0][selectedYearMonth[0]]}}年{{yearMonthRange[1][selectedYearMonth[1]] === '全部' ? '全部月份' : yearMonthRange[1][selectedYearMonth[1]] + '月'}}
+            {{formatYearMonthDisplay(selectedYearMonth[0], selectedYearMonth[1])}}
           </view>
         </picker>
       </view>
@@ -75,8 +75,7 @@
           <view class="table-col-score">得分</view>
           <view class="table-col-media">内容</view>
           <view class="table-col-result">评价</view>
-          <view class="table-col-suggest">建议</view>
-          <view class="table-col-ai">AI分析</view>
+          <view class="table-col-ai">AI 分析</view>
         </view>
         
         <!-- 表格内容 -->
@@ -88,31 +87,57 @@
                 <text>{{item.dateTimeStr}}</text>
                 <text wx:if="{{item.isToday}}" class="today-tag">（今天）</text>
               </view>
-              <view class="table-col-score">
-                <text class="score-value {{item.score >= 8 ? 'score-green' : (item.score >= 6 ? 'score-orange' : 'score-red')}}">
-                  {{item.score === -1 ? '-' : item.score}}
-                </text>
-              </view>
-              <view class="table-col-media">
-                <button class="action-btn media-btn" bindtap="viewMedia" data-item="{{item}}">
-                  <text class="btn-icon">{{item.mediaType === 'video' ? '🎬' : '🖼️'}}</text>
-                </button>
-              </view>
-              <view class="table-col-result">
-                <button class="action-btn result-btn" wx:if="{{item.checkResults && item.checkResults.length > 0}}" bindtap="viewCheckResult" data-item="{{item}}">
-                  <text class="btn-icon">📋</text>
-                </button>
-                <text class="no-data" wx:else>-</text>
-              </view>
-              <view class="table-col-suggest">
-                <button class="action-btn suggest-btn" wx:if="{{item.suggestion}}" bindtap="viewSuggestion" data-item="{{item}}">
-                  <text class="btn-icon">💡</text>
-                </button>
-                <text class="no-data" wx:else>-</text>
-              </view>
+          <view class="table-col-score">
+            <!-- 家长查看孩子记录：显示分数，只读 -->
+            <text class="score-value {{item.score >= 8 ? 'score-green' : (item.score >= 6 ? 'score-orange' : 'score-red')}}" wx:if="{{isParent}}">
+              {{item.score === -1 ? '-' : item.score}}
+            </text>
+            <!-- 自己查看自己的记录：可编辑 -->
+            <input 
+              class="score-input {{item.score >= 8 ? 'score-green' : (item.score >= 6 ? 'score-orange' : 'score-red')}}" 
+              value="{{item.score === -1 ? '' : item.score}}" 
+              placeholder="-" 
+              type="number"
+              maxlength="2"
+              wx:else
+              bindblur="onScoreEdit" 
+              data-record-id="{{item._id}}"
+              data-field="score"
+            />
+          </view>
+          <view class="table-col-media">
+            <button class="action-btn media-btn" bindtap="viewMedia" data-item="{{item}}">
+              <text class="btn-icon">{{item.mediaType === 'video' ? '🎬' : '🖼️'}}</text>
+            </button>
+          </view>
+          <view class="table-col-result">
+            <!-- 家长查看孩子记录：显示评价内容，只读，可点击查看 -->
+            <view wx:if="{{isParent}}">
+              <button class="action-btn result-btn" wx:if="{{item.aiAnalysis || item.checkResults && item.checkResults.length > 0}}" bindtap="viewCheckResult" data-item="{{item}}">
+                <text class="btn-icon">📋</text>
+              </button>
+              <text class="no-data" wx:elif="{{!(item.aiAnalysis || (item.checkResults && item.checkResults.length > 0))}}">-</text>
+            </view>
+            <!-- 自己查看自己的记录：可编辑 -->
+            <view wx:else>
+              <input 
+                class="result-input" 
+                value="{{item.aiAnalysis || ''}}" 
+                placeholder="输入评价" 
+                bindblur="onTextEdit" 
+                data-record-id="{{item._id}}"
+                data-field="aiAnalysis"
+              />
+            </view>
+          </view>
               <view class="table-col-ai">
-                <button class="action-btn ai-btn" bindtap="onAIEvaluate" data-item="{{item}}">
-                  <text class="btn-icon">🤖</text>
+                <!-- 家长查看孩子记录：AI 分析按钮可点击 -->
+                <button class="action-btn ai-btn" wx:if="{{isParent}}" bindtap="showRatingModal" data-item="{{item}}">
+                  <text class="btn-icon">⭐</text>
+                </button>
+                <!-- 自己查看自己的记录：可点击 -->
+                <button class="action-btn ai-btn" wx:else bindtap="showRatingModal" data-item="{{item}}">
+                  <text class="btn-icon">⭐</text>
                 </button>
               </view>
             </view>
@@ -210,14 +235,6 @@
             </view>
           </view>
           
-          <!-- 学习建议 -->
-          <view class="result-section" wx:if="{{suggestion}}">
-            <view class="section-header">
-              <text class="section-icon">💡</text>
-              <text class="section-title">学习建议</text>
-            </view>
-            <view class="suggestion-box">{{suggestion}}</view>
-          </view>
         </view>
       </scroll-view>
       <button class="check-result-close-btn" bindtap="closeCheckResultModal">关闭</button>
@@ -232,6 +249,62 @@
         <view class="spinner-circle"></view>
         <view class="loading-animal">{{currentAnimal}}</view>
       </view>
+    </view>
+  </view>
+
+  <!-- 手动评分弹框 -->
+  <view class="manual-rating-modal" wx:if="{{showManualRatingModal}}" bindtap="closeManualRatingModal">
+    <view class="manual-rating-content" catchtap="stopManualModalTap">
+      <view class="manual-rating-header">
+        <text class="manual-rating-title">✏️ 手动评分</text>
+      </view>
+      <scroll-view class="manual-rating-body" scroll-y="true">
+        <view class="form-item">
+          <text class="item-label">得分（0-10 分）</text>
+          <input 
+            class="score-input" 
+            type="number" 
+            placeholder="请输入得分" 
+            value="{{manualRatingScore}}"
+            bindinput="onManualScoreInput"
+            maxlength="2"
+          />
+        </view>
+        <view class="form-item">
+          <text class="item-label">评价</text>
+          <textarea 
+            class="evaluation-textarea" 
+            placeholder="请输入评价内容" 
+            value="{{manualRatingEvaluation}}"
+            bindinput="onManualEvaluationInput"
+            maxlength="200"
+          />
+        </view>
+      </scroll-view>
+      <view class="manual-rating-footer">
+        <button class="btn btn-cancel" bindtap="closeManualRatingModal">取消</button>
+        <button class="btn btn-save" bindtap="saveManualRating">保存</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- AI 评分选择弹框 -->
+  <view class="rating-choice-modal" wx:if="{{showRatingChoice}}" bindtap="closeRatingModal">
+    <view class="rating-choice-content" catchtap="void">
+      <view class="rating-choice-title">选择评分方式</view>
+      <view class="rating-choice-options">
+        <view class="rating-choice-option" bindtap="onAIAssessment">
+          <view class="option-icon">🤖</view>
+          <view class="option-text">AI 自动评分</view>
+          <view class="option-desc">智能识别图片，自动评分并给出建议</view>
+        </view>
+        <view class="rating-choice-option" bindtap="onManualAssessment">
+          <view class="option-icon">✍️</view>
+          <view class="option-text">手动评分</view>
+          <view class="option-desc">手动输入分数和评价</view>
+        </view>
+      </view>
+      <button class="rating-choice-cancel" bindtap="closeRatingModal">取消</button>
     </view>
   </view>
 
@@ -319,14 +392,6 @@
             </view>
           </view>
           
-          <!-- 学习建议 -->
-          <view class="result-section" wx:if="{{aiSuggestion}}">
-            <view class="section-header">
-              <text class="section-icon">💡</text>
-              <text class="section-title">学习建议</text>
-            </view>
-            <view class="suggestion-box">{{aiSuggestion}}</view>
-          </view>
         </view>
       </scroll-view>
       <view class="ai-modal-footer">

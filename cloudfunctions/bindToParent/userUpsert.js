@@ -1,6 +1,15 @@
 // cloudfunctions/bindToParent/userUpsert.js
-// 统一的 users upsert：确保同一 openid 只维护一条“主记录”
+// 统一的 users upsert：确保同一 openid 只维护一条"主记录"
 // 说明：云函数是独立部署单元，不能跨目录 require，所以把共享逻辑复制一份到本云函数目录。
+// 此版本支持角色管理功能
+
+// 角色常量（与 _shared/userRoles.js 保持一致）
+const ROLE = {
+  NORMAL: 'normal',
+  PARENT: 'parent',
+  CHILD: 'child'
+};
+
 function safeTrim(v) {
   if (typeof v !== 'string') return '';
   return v.trim();
@@ -20,6 +29,15 @@ function scoreUser(u) {
 
 function getOpenidKey(u) {
   return (u && (u._openid || u.openid || u.openId || u.openID)) || '';
+}
+
+/**
+ * 标准化角色值
+ */
+function normalizeRole(role) {
+  if (!role || role === '') return ROLE.NORMAL;
+  if (Object.values(ROLE).includes(role)) return role;
+  return ROLE.NORMAL;
 }
 
 async function findUsersByOpenid(db, openid) {
@@ -43,7 +61,7 @@ async function findUsersByOpenid(db, openid) {
  * @param {DB} db cloud.database()
  * @param {string} openid wxContext.OPENID
  * @param {object} patch 要写入的字段
- * @param {object} options { now?: serverDate, softDedup?: boolean }
+ * @param {object} options { now?: serverDate, softDedup?: boolean, skipRoleNormalize?: boolean }
  * @returns {object} { userId, user, dedupedCount, created }
  */
 async function upsertUserProfile(db, openid, patch = {}, options = {}) {
@@ -51,15 +69,25 @@ async function upsertUserProfile(db, openid, patch = {}, options = {}) {
 
   const now = options.now || db.serverDate();
   const softDedup = options.softDedup !== false;
+  const skipRoleNormalize = options.skipRoleNormalize !== true;
 
   const users = await findUsersByOpenid(db, openid);
+
+  // 角色标准化处理
+  let patchToUse = { ...patch };
+  if (!skipRoleNormalize && patchToUse.role !== undefined) {
+    patchToUse.role = normalizeRole(patchToUse.role);
+  }
 
   if (!users.length) {
     const dataToAdd = {
       openid,
+      _openid: openid,
+      role: ROLE.NORMAL,
+      role_update_time: now,
       create_time: now,
       update_time: now,
-      ...patch
+      ...patchToUse
     };
     const addRes = await db.collection('users').add({ data: dataToAdd });
     return {
@@ -77,9 +105,15 @@ async function upsertUserProfile(db, openid, patch = {}, options = {}) {
 
   const updateData = {
     openid: primary.openid || openid,
+    _openid: primary._openid || openid,
     update_time: now,
-    ...patch
+    ...patchToUse
   };
+
+  // 如果 patch 中有 role 字段，同时更新 role_update_time
+  if (patchToUse.role !== undefined && patchToUse.role !== primary.role) {
+    updateData.role_update_time = now;
+  }
 
   await db.collection('users').doc(primary._id).update({ data: updateData });
 
@@ -117,5 +151,8 @@ module.exports = {
   upsertUserProfile,
   findUsersByOpenid,
   getOpenidKey,
-  scoreUser
+  scoreUser,
+  safeTrim,
+  normalizeRole,
+  ROLE
 };

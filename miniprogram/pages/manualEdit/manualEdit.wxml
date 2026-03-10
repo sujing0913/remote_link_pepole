@@ -1,0 +1,52 @@
+<view class="manual-edit-container">
+  <view class="edit-header">
+    <text class="header-title">手动评分编辑</text>
+  </view>
+  
+  <view class="edit-form">
+    <!-- 评分输入 -->
+    <view class="form-item">
+      <view class="item-label">评分</view>
+      <input 
+        class="score-input" 
+        type="number" 
+        value="{{score}}" 
+        placeholder="请输入评分（0-10）"
+        bindinput="onScoreInput"
+        maxlength="2"
+      />
+      <text class="score-range">（0-10分）</text>
+    </view>
+    
+    <!-- 建议输入 -->
+    <view class="form-item">
+      <view class="item-label">学习建议</view>
+      <textarea 
+        class="suggestion-textarea" 
+        value="{{suggestion}}" 
+        placeholder="请输入学习建议"
+        bindinput="onSuggestionInput"
+        maxlength="200"
+        auto-height="true"
+      />
+    </view>
+    
+    <!-- 分析输入 -->
+    <view class="form-item">
+      <view class="item-label">AI分析</view>
+      <textarea 
+        class="analysis-textarea" 
+        value="{{analysis}}" 
+        placeholder="请输入AI分析内容"
+        bindinput="onAnalysisInput"
+        maxlength="500"
+        auto-height="true"
+      />
+    </view>
+  </view>
+  
+  <view class="button-group">
+    <button class="btn btn-cancel" bindtap="onCancel">取消</button>
+    <button class="btn btn-save" bindtap="onSave">保存</button>
+  </view>
+</view>

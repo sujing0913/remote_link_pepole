@@ -119,17 +119,12 @@
 }
 
 .table-col-result {
-  width: 12%;
-  text-align: center;
-}
-
-.table-col-suggest {
-  width: 14%;
+  width: 16%;
   text-align: center;
 }
 
 .table-col-ai {
-  width: 18%;
+  width: 22%;
   text-align: center;
 }
 
@@ -257,33 +252,6 @@
   color: #ccc;
 }
 
-/* 建议按钮 */
-.table-col-suggest .action-btn {
-  width: 60rpx;
-  height: 60rpx;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
-  border: none;
-  padding: 0;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.table-col-suggest .action-btn::after {
-  border: none;
-}
-
-.table-col-suggest .btn-icon {
-  font-size: 28rpx;
-  margin: 0;
-}
-
-.table-col-suggest .no-data {
-  font-size: 28rpx;
-  color: #ccc;
-}
 
 /* AI分析按钮 */
 .table-col-ai .action-btn {
@@ -341,13 +309,8 @@
   text-align: center;
 }
 
-.table-row .table-col-suggest {
-  width: 14%;
-  text-align: center;
-}
-
 .table-row .table-col-ai {
-  width: 18%;
+  width: 22%;
   text-align: center;
 }
 
@@ -377,13 +340,8 @@
   text-align: center;
 }
 
-.month-table .table-col-suggest {
-  width: 14%;
-  text-align: center;
-}
-
 .month-table .table-col-ai {
-  width: 18%;
+  width: 22%;
   text-align: center;
 }
 
@@ -510,10 +468,6 @@
   text-align: center;
 }
 
-.month-table .table-col-suggest {
-  width: 20%;
-  text-align: center;
-}
 
 /* 表格内容区域 - 覆盖原有样式 */
 .month-table .table-body {
@@ -901,13 +855,21 @@
 .check-result-close-btn {
   margin: 20rpx 30rpx 30rpx;
   height: 80rpx;
-  line-height: 80rpx;
   background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
   color: #fff;
   border: none;
   border-radius: 40rpx;
   font-size: 30rpx;
   font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: normal;
+  padding: 0;
+}
+
+.check-result-close-btn::after {
+  border: none;
 }
 
 .check-result-close-btn:active {
@@ -926,18 +888,6 @@
   margin-bottom: 0;
 }
 
-.suggestion-box {
-  background-color: #fff9e6;
-  border-left: 4rpx solid #ffbb00;
-  border-radius: 12rpx;
-  padding: 20rpx;
-  margin-top: 10rpx;
-  font-size: 26rpx;
-  color: #666;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
 
 /* ==================== AI 评分加载动画样式 ==================== */
 .ai-loading-mask {
@@ -1071,11 +1021,15 @@
 .ai-modal-btn {
   flex: 1;
   height: 80rpx;
-  line-height: 80rpx;
   border-radius: 40rpx;
   font-size: 30rpx;
   font-weight: bold;
   border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: normal;
+  padding: 0;
 }
 
 .ai-modal-btn::after {
@@ -1094,6 +1048,324 @@
 }
 
 .ai-modal-btn:active {
+  opacity: 0.8;
+  transform: scale(0.98);
+}
+
+/* 可编辑输入框样式 */
+.score-input, .result-input {
+  width: 100%;
+  height: 60rpx;
+  border: 2rpx solid #e0e0e0;
+  border-radius: 8rpx;
+  padding: 0 15rpx;
+  font-size: 26rpx;
+  text-align: center;
+  box-sizing: border-box;
+  background-color: #f9f9f9;
+}
+
+.score-input {
+  text-align: center;
+}
+
+.score-input:focus, .result-input:focus {
+  border-color: #667eea;
+  background-color: #fff;
+  box-shadow: 0 0 10rpx rgba(102, 126, 234, 0.2);
+}
+
+.score-input.score-green {
+  color: #52c41a;
+  border-color: #52c41a;
+  background-color: #f6ffed;
+}
+
+.score-input.score-orange {
+  color: #ff9800;
+  border-color: #ff9800;
+  background-color: #fff7e6;
+}
+
+.score-input.score-red {
+  color: #ff4d4f;
+  border-color: #ff4d4f;
+  background-color: #fff2f0;
+}
+
+.result-input {
+  padding: 10rpx 15rpx;
+  min-height: 60rpx;
+  text-align: left;
+  height: auto;
+  line-height: 1.4;
+}
+
+/* 表格行中的输入框样式 */
+.table-row .score-input, .table-row .result-input {
+  margin: 0 auto;
+  max-width: 80rpx;
+}
+
+/* 评分选择弹框样式 */
+.rating-choice-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rating-choice-content {
+  width: 85%;
+  max-width: 550rpx;
+  background-color: #fff;
+  border-radius: 24rpx;
+  overflow: hidden;
+  box-shadow: 0 10rpx 60rpx rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+.rating-choice-title {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #333;
+  text-align: center;
+  padding: 30rpx 20rpx 20rpx;
+}
+
+.rating-choice-options {
+  padding: 20rpx 30rpx 30rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.rating-choice-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30rpx 20rpx;
+  border-radius: 16rpx;
+  border: 2rpx solid #e0e0e0;
+  background-color: #fafafa;
+  transition: all 0.2s ease;
+}
+
+.rating-choice-option:active {
+  transform: scale(0.98);
+  background-color: #f0f0f0;
+}
+
+.rating-choice-option:first-child {
+  border-color: #4facfe;
+  background: linear-gradient(135deg, rgba(79, 172, 254, 0.08) 0%, rgba(0, 242, 254, 0.08) 100%);
+}
+
+.rating-choice-option:last-child {
+  border-color: #fa709a;
+  background: linear-gradient(135deg, rgba(250, 112, 154, 0.08) 0%, rgba(254, 225, 64, 0.08) 100%);
+}
+
+.option-icon {
+  font-size: 64rpx;
+  margin-bottom: 10rpx;
+}
+
+.option-text {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 8rpx;
+}
+
+.option-desc {
+  font-size: 24rpx;
+  color: #888;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.rating-choice-cancel {
+  margin: 0 30rpx 30rpx;
+  height: 80rpx;
+  background-color: #f5f5f5;
+  color: #666;
+  border: none;
+  border-radius: 40rpx;
+  font-size: 30rpx;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: normal;
+  padding: 0;
+}
+
+.rating-choice-cancel::after {
+  border: none;
+}
+
+.rating-choice-cancel:active {
+  opacity: 0.8;
+  background-color: #e0e0e0;
+}
+
+/* 家长只读模式下分数显示样式 */
+.score-value {
+  font-size: 26rpx;
+  font-weight: 500;
+  text-align: center;
+  display: block;
+  width: 100%;
+  padding: 8rpx 0;
+  background-color: #f5f5f5;
+  border-radius: 6rpx;
+}
+
+/* 人工评价弹框样式 */
+.manual-rating-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.manual-rating-content {
+  width: 90%;
+  max-width: 600rpx;
+  max-height: 85vh;
+  background-color: #fff;
+  border-radius: 24rpx;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10rpx 60rpx rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+.manual-rating-header {
+  padding: 30rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.manual-rating-title {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #fff;
+}
+
+.manual-rating-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 30rpx;
+  max-height: 50vh;
+}
+
+.form-item {
+  margin-bottom: 30rpx;
+}
+
+.form-item:last-child {
+  margin-bottom: 0;
+}
+
+.item-label {
+  font-size: 28rpx;
+  color: #333;
+  margin-bottom: 15rpx;
+  font-weight: 500;
+}
+
+.score-input {
+  width: 100%;
+  height: 80rpx;
+  border: 2rpx solid #e0e0e0;
+  border-radius: 12rpx;
+  padding: 0 20rpx;
+  font-size: 32rpx;
+  text-align: center;
+  box-sizing: border-box;
+  background-color: #f9f9f9;
+}
+
+.score-input:focus {
+  border-color: #667eea;
+  background-color: #fff;
+  box-shadow: 0 0 10rpx rgba(102, 126, 234, 0.2);
+}
+
+.evaluation-textarea {
+  width: 100%;
+  min-height: 120rpx;
+  border: 2rpx solid #e0e0e0;
+  border-radius: 12rpx;
+  padding: 20rpx;
+  font-size: 28rpx;
+  line-height: 1.5;
+  box-sizing: border-box;
+  background-color: #f9f9f9;
+  text-align: left;
+}
+
+.evaluation-textarea:focus {
+  border-color: #667eea;
+  background-color: #fff;
+  box-shadow: 0 0 10rpx rgba(102, 126, 234, 0.2);
+}
+
+.manual-rating-footer {
+  display: flex;
+  gap: 20rpx;
+  padding: 20rpx 30rpx 30rpx;
+  background-color: #fff;
+}
+
+.btn {
+  flex: 1;
+  height: 80rpx;
+  border-radius: 40rpx;
+  font-size: 30rpx;
+  font-weight: bold;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: normal;
+  padding: 0;
+  margin: 0;
+}
+
+.btn::after {
+  border: none;
+}
+
+.btn-cancel {
+  background-color: #fff;
+  color: #666;
+  border: 2rpx solid #ddd;
+}
+
+.btn-save {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+
+.btn:active {
   opacity: 0.8;
   transform: scale(0.98);
 }

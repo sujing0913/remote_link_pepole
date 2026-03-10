@@ -32,7 +32,6 @@ Page({
     totalQuestions: 0,
     correctQuestions: 0,
     aiAnalysis: '',
-    suggestion: '',
     checkResults: [],
     // AI 评分弹框数据
     showAIResultModal: false,
@@ -43,14 +42,22 @@ Page({
     aiTotalQuestions: 0,
     aiCorrectQuestions: 0,
     aiJudgment: '',
-    aiSuggestion: '',
     aiCheckResults: [],
     fileType: '',
     fileID: '',
     // AI 评分加载动画数据
     showAILoading: false,
     currentAnimal: '🐱',
-    animalTimer: null
+    animalTimer: null,
+
+    // 评分选择弹框数据
+    showRatingChoice: false,
+    currentRatingItem: null,
+
+    // 人工评价弹框数据
+    showManualRatingModal: false,
+    manualRatingScore: '',
+    manualRatingEvaluation: ''
   },
 
   // 可爱的小动物头像列表
@@ -121,6 +128,20 @@ Page({
       yearMonthRange: [years, months],
       selectedYearMonth: [years.length - 1, new Date().getMonth() + 1] // 默认选中当前年份和当前月份
     });
+  },
+
+  // 格式化年月显示
+  formatYearMonthDisplay: function(yearIndex, monthIndex) {
+    const years = this.data.yearMonthRange[0];
+    const months = this.data.yearMonthRange[1];
+    const year = years[yearIndex];
+    const month = months[monthIndex];
+    
+    if (month === '全部') {
+      return `${year}年全部月份`;
+    } else {
+      return `${year}-${month}`;
+    }
   },
 
   onSubjectChange(e) {
@@ -209,10 +230,8 @@ Page({
         if (opt.openid) {
           targetOpenId = opt.openid;
         } else {
-          // 选“无” => 家长端不展示任何记录
-          this.processRecords([]);
-          wx.hideLoading();
-          return;
+          // 选"无" => 显示当前用户自己的打卡记录
+          targetOpenId = this.data.currentUserOpenId;
         }
       }
 
@@ -375,24 +394,6 @@ Page({
     }
   },
 
-  // 查看建议
-  viewSuggestion: function(e) {
-    const item = e.currentTarget.dataset.item;
-    
-    if (!item || !item.suggestion) return;
-    
-    const that = this;
-    const suggestionText = item.suggestion;
-    
-    wx.showModal({
-      title: '💡 改进建议',
-      content: suggestionText,
-      showCancel: false,
-      confirmText: '知道了',
-      confirmColor: '#07c160'
-    });
-  },
-
   // 查看检查结果
   viewCheckResult: function(e) {
     const item = e.currentTarget.dataset.item;
@@ -407,7 +408,6 @@ Page({
     const correctQuestions = item.correctQuestions || item.correct_questions || (checkResults.length > 0 ? checkResults.filter(r => r.is_correct).length : 0);
     const recognizedContent = item.recognizedContent || item.recognized_content || '';
     const aiAnalysis = item.aiAnalysis || item.judgment || '';
-    const suggestion = item.suggestion || '';
     const score = item.score !== undefined && item.score !== -1 ? item.score : 0;
     
     // 根据得分计算颜色
@@ -433,7 +433,6 @@ Page({
       totalQuestions: totalQuestions,
       correctQuestions: correctQuestions,
       aiAnalysis: aiAnalysis,
-      suggestion: suggestion,
       checkResults: checkResults,
       showCheckResultModal: true
     });
@@ -497,22 +496,331 @@ Page({
     });
   },
 
-  // AI 评分按钮点击事件
-  onAIEvaluate: async function(e) {
+  // 显示评分弹框（选择 AI 自动评分或手动评分）
+  showRatingModal: function(e) {
+    const item = e.currentTarget.dataset.item;
+    if (!item) {
+      wx.showToast({ title: '记录数据异常', icon: 'none' });
+      return;
+    }
+    
+    // 检查是否有媒体内容
+    if (!item.mediaUrl) {
+      wx.showModal({
+        title: '提示',
+        content: '该记录没有媒体内容，无法进行 AI 评分，是否进行手动评分？',
+        confirmText: '手动评分',
+        cancelText: '取消',
+        success: (res) => {
+          if (res.confirm) {
+            this.setData({
+              currentRatingItem: item,
+              showManualRatingModal: true,
+              manualRatingScore: item.score !== -1 ? item.score : '',
+              manualRatingEvaluation: item.aiAnalysis || ''
+            });
+          }
+        }
+      });
+      return;
+    }
+    
+    // 检查是否为图片（AI 仅支持图片）
+    if (item.mediaType !== 'image') {
+      wx.showModal({
+        title: '提示',
+        content: '该记录为视频，无法进行 AI 评分，是否进行手动评分？',
+        confirmText: '手动评分',
+        cancelText: '取消',
+        success: (res) => {
+          if (res.confirm) {
+            this.setData({
+              currentRatingItem: item,
+              showManualRatingModal: true,
+              manualRatingScore: item.score !== -1 ? item.score : '',
+              manualRatingEvaluation: item.aiAnalysis || ''
+            });
+          }
+        }
+      });
+      return;
+    }
+    
+    // 保存当前记录并显示选择弹框
+    this.setData({
+      currentRatingItem: item,
+      showRatingChoice: true
+    });
+  },
+
+  // 关闭评分弹框
+  closeRatingModal: function() {
+    this.setData({
+      showRatingChoice: false,
+      currentRatingItem: null
+    });
+  },
+
+  // 选择AI自动评价
+  onAIAssessment: async function() {
+    const item = this.data.currentRatingItem;
+    if (!item) {
+      wx.showToast({ title: '记录不存在', icon: 'none' });
+      return;
+    }
+
+    this.setData({
+      showRatingChoice: false
+    });
+
+    if (!item.mediaUrl) {
+      wx.showToast({ title: '该记录无媒体内容', icon: 'none' });
+      return;
+    }
+
+    if (item.mediaType !== 'image') {
+      wx.showToast({ title: '仅支持图片AI分析', icon: 'none' });
+      return;
+    }
+
+    // 调用 AI 评分
+    this.callAIEvaluate(item._id, item.subject, item.mediaType, item.mediaUrl);
+  },
+
+  // 选择人工评价
+  onManualAssessment: function() {
+    const item = this.data.currentRatingItem;
+    if (!item) {
+      wx.showToast({ title: '记录不存在', icon: 'none' });
+      return;
+    }
+
+    this.setData({
+      showRatingChoice: false,
+      showManualRatingModal: true,
+      manualRatingScore: item.score !== -1 ? item.score : '',
+      manualRatingEvaluation: item.aiAnalysis || ''
+    });
+  },
+
+  // 关闭人工评价弹框
+  closeManualRatingModal: function() {
+    this.setData({
+      showManualRatingModal: false,
+      manualRatingScore: '',
+      manualRatingEvaluation: ''
+    });
+  },
+
+  // 阻止弹框内容点击事件冒泡
+  stopManualModalTap: function() {
+    // 空函数，阻止事件冒泡
+  },
+
+  // 阻止 AI 评分弹框内容点击事件冒泡
+  stopPropagation: function() {
+    // 空函数，阻止事件冒泡
+  },
+
+  // 人工评价输入事件
+  onManualScoreInput: function(e) {
+    const score = parseInt(e.detail.value) || '';
+    this.setData({
+      manualRatingScore: score
+    });
+  },
+
+  onManualEvaluationInput: function(e) {
+    this.setData({
+      manualRatingEvaluation: e.detail.value
+    });
+  },
+
+  // 保存人工评价
+  saveManualRating: async function() {
+    const item = this.data.currentRatingItem;
+    const { manualRatingScore, manualRatingEvaluation, manualRatingSuggestion } = this.data;
+
+    console.log('saveManualRating - item:', item);
+    console.log('saveManualRating - score:', manualRatingScore);
+    console.log('saveManualRating - evaluation:', manualRatingEvaluation);
+
+    if (!item || !item._id) {
+      wx.showToast({ title: '记录不存在', icon: 'none' });
+      return;
+    }
+
+    // 验证得分
+    if (manualRatingScore === '' || manualRatingScore === undefined || manualRatingScore === null) {
+      wx.showToast({ title: '请输入得分', icon: 'none' });
+      return;
+    }
+
+    const scoreNum = parseInt(manualRatingScore);
+    if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 10) {
+      wx.showToast({ title: '得分应在 0-10 之间', icon: 'none' });
+      return;
+    }
+
+    try {
+      // 使用云函数更新打卡记录，确保权限校验和数据库同步
+      const result = await wx.cloud.callFunction({
+        name: 'updateCheckIn',
+        data: {
+          recordId: item._id,
+          score: scoreNum,
+          aiAnalysis: manualRatingEvaluation || '',
+          manualEdited: true
+        }
+      });
+
+      console.log('saveManualRating - result:', result);
+
+      if (result.result && result.result.success) {
+        wx.showToast({ title: '评分保存成功', icon: 'success' });
+        this.setData({
+          showManualRatingModal: false,
+          manualRatingScore: '',
+          manualRatingEvaluation: '',
+          currentRatingItem: null
+        });
+        // 刷新记录列表
+        this.fetchRecords();
+      } else {
+        console.error('保存失败 - result:', result);
+        wx.showToast({ 
+          title: '保存失败：' + (result.result ? result.result.message : '未知错误'), 
+          icon: 'error' 
+        });
+      }
+    } catch (error) {
+      console.error('保存人工评价失败', error);
+      wx.showToast({ title: '保存失败：' + (error.errMsg || error.message || '未知错误'), icon: 'error' });
+    }
+  },
+
+  // 对当前记录进行AI评分（家长对孩子记录的AI分析）
+  onAIEvaluateForRecord: async function(e) {
     const item = e.currentTarget.dataset.item;
     
     if (!item) {
       wx.showToast({ title: '记录不存在', icon: 'none' });
       return;
     }
+
+    // 检查是否为家长查看孩子的记录
+    if (this.data.isParent && this.data.selectedChildIndex != 0) {
+      // 家长对孩子的记录进行AI评分
+      if (!item.mediaUrl) {
+        wx.showToast({ title: '该记录无媒体内容', icon: 'none' });
+        return;
+      }
+
+      if (item.mediaType !== 'image') {
+        wx.showToast({ title: '仅支持图片AI分析', icon: 'none' });
+        return;
+      }
+
+      // 调用 AI 评分
+      this.callAIEvaluate(item._id, item.subject, item.mediaType, item.mediaUrl);
+    } else {
+      // 普通用户的AI评分逻辑
+      if (!item.mediaUrl) {
+        wx.showToast({ title: '该记录无媒体内容', icon: 'none' });
+        return;
+      }
+
+      if (item.mediaType !== 'image') {
+        wx.showToast({ title: '仅支持图片AI分析', icon: 'none' });
+        return;
+      }
+
+      // 调用 AI 评分
+      this.callAIEvaluate(item._id, item.subject, item.mediaType, item.mediaUrl);
+    }
+  },
+
+  // 处理得分编辑
+  onScoreEdit: async function(e) {
+    const { recordId, field } = e.currentTarget.dataset;
+    const newValue = e.detail.value;
     
-    if (item.mediaType !== 'image') {
-      wx.showToast({ title: '仅支持图片评分', icon: 'none' });
+    if (!recordId) return;
+    
+    // 验证得分范围
+    const score = parseInt(newValue);
+    if (isNaN(score) || score < 0 || score > 10) {
+      wx.showToast({ title: '得分应在 0-10 之间', icon: 'none' });
       return;
     }
     
-    // 调用 AI 评分
-    this.callAIEvaluate(item._id, item.subject, item.mediaType, item.mediaUrl);
+    try {
+      // 使用云函数更新打卡记录
+      const result = await wx.cloud.callFunction({
+        name: 'updateCheckIn',
+        data: {
+          recordId: recordId,
+          score: score,
+          manualEdited: true
+        }
+      });
+
+      if (result.result && result.result.success) {
+        wx.showToast({ title: '得分已更新', icon: 'success', duration: 1000 });
+        // 刷新记录列表
+        this.fetchRecords();
+      } else {
+        wx.showToast({ 
+          title: '更新失败：' + (result.result ? result.result.message : '未知错误'), 
+          icon: 'error' 
+        });
+      }
+    } catch (error) {
+      console.error('更新得分失败', error);
+      wx.showToast({ title: '更新失败', icon: 'error' });
+    }
+  },
+
+  // 处理文本编辑（评价、建议等）
+  onTextEdit: async function(e) {
+    const { recordId, field } = e.currentTarget.dataset;
+    const newValue = e.detail.value;
+    
+    if (!recordId) return;
+    
+    try {
+      // 使用云函数更新打卡记录
+      const updateData = {
+        recordId: recordId,
+        manualEdited: true
+      };
+      
+      // 根据字段名传递不同的数据
+      if (field === 'score') {
+        updateData.score = parseInt(newValue) || 0;
+      } else if (field === 'aiAnalysis') {
+        updateData.aiAnalysis = newValue || '';
+      }
+      
+      const result = await wx.cloud.callFunction({
+        name: 'updateCheckIn',
+        data: updateData
+      });
+
+      if (result.result && result.result.success) {
+        wx.showToast({ title: '已更新', icon: 'success', duration: 1000 });
+        // 刷新记录列表
+        this.fetchRecords();
+      } else {
+        wx.showToast({ 
+          title: '更新失败：' + (result.result ? result.result.message : '未知错误'), 
+          icon: 'error' 
+        });
+      }
+    } catch (error) {
+      console.error('更新文本失败', error);
+      wx.showToast({ title: '更新失败', icon: 'error' });
+    }
   },
 
   // AI 评分调用函数
@@ -534,7 +842,6 @@ Page({
   "correct_questions": 正确题目数量（数字，如 3）,
   "score": 得分（数字，计算公式：correct_questions/total_questions*10，保留整数）,
   "judgment": "对打卡内容进行判断（如：共 5 道题，正确 3 道，错误 2 道，需要加强练习）",
-  "suggestion": "具体的学习建议",
   "check_results": [
     {"question": "第 1 题题目内容", "user_answer": "用户写的答案", "correct_answer": "正确答案", "is_correct": false},
     {"question": "第 2 题题目内容", "user_answer": "用户写的答案", "correct_answer": "正确答案", "is_correct": true}
@@ -585,7 +892,6 @@ Page({
   // 保存 AI 分析结果到数据库
   saveAIResultToDB: function(recordId, result, subject) {
     const score = result.score || 0;
-    const suggestion = result.suggestion || '';
     const judgment = result.judgment || '';
     const recognizedContent = result.recognized_content || '';
     const totalQuestions = result.total_questions || 0;
@@ -595,7 +901,6 @@ Page({
     db.collection('check_ins').doc(recordId).update({
       data: {
         score: score,
-        suggestion: suggestion,
         aiAnalysis: judgment,
         recognizedContent: recognizedContent,
         totalQuestions: totalQuestions,
@@ -621,7 +926,6 @@ Page({
     const score = result.score || 0;
     const recognizedContent = result.recognized_content || '';
     const judgment = result.judgment || '';
-    const suggestion = result.suggestion || '';
     const totalQuestions = result.total_questions || 0;
     const correctQuestions = result.correct_questions || 0;
     const checkResults = result.check_results || [];
@@ -649,7 +953,6 @@ Page({
       aiTotalQuestions: totalQuestions,
       aiCorrectQuestions: correctQuestions,
       aiJudgment: judgment,
-      aiSuggestion: suggestion,
       aiCheckResults: checkResults,
       showAIResultModal: true,
       fileType: fileType,
