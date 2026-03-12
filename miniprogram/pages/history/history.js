@@ -11,8 +11,8 @@ Page({
     records: [], // 扁平数组，用于表格显示
     monthGroups: [], // 按月分组的数据
     currentUserOpenId: '',
-    yearMonthRange: [[], []],
-    selectedYearMonth: [0, 0],
+    dateRange: [], // 日期选项列表
+    selectedDateIndex: 0, // 当前选中的日期索引
     subjectRange: ['语文', '数学', '英语', '减肥', '生活', '健身', '其他'], // 与首页保持一致
     selectedSubjectIndex: 2, // 默认选中英语（与首页一致）
 
@@ -98,7 +98,7 @@ Page({
       // 初始化绑定关系（判断是否家长 + 拉孩子列表）
       await this.initBindingsForRole();
 
-      this.generateYearMonthRange();
+      this.generateDateRange();
       this.fetchRecords();
     } catch (e) {
       console.error('初始化失败', e);
@@ -115,33 +115,32 @@ Page({
     }
   },
 
-  generateYearMonthRange() {
-    const currentYear = new Date().getFullYear();
-    const startYear = 2023; // 可根据需求调整起始年份
-    const years = [];
-    for (let y = startYear; y <= currentYear; y++) {
-      years.push(y.toString());
+  // 生成日期范围选项（最近 12 个月 + 全部时间）
+  generateDateRange() {
+    const now = new Date();
+    const dateOptions = [];
+    
+    // 添加"全部"选项
+    dateOptions.push('全部');
+    
+    // 添加最近 12 个月选项，格式：2026-03
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const year = date.getFullYear();
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      dateOptions.push(`${year}-${month}`);
     }
-    const months = ['全部', ...Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'))];
     
     this.setData({
-      yearMonthRange: [years, months],
-      selectedYearMonth: [years.length - 1, new Date().getMonth() + 1] // 默认选中当前年份和当前月份
+      dateRange: dateOptions,
+      selectedDateIndex: 0 // 默认选中"全部时间"
     });
   },
 
-  // 格式化年月显示
-  formatYearMonthDisplay: function(yearIndex, monthIndex) {
-    const years = this.data.yearMonthRange[0];
-    const months = this.data.yearMonthRange[1];
-    const year = years[yearIndex];
-    const month = months[monthIndex];
-    
-    if (month === '全部') {
-      return `${year}年全部月份`;
-    } else {
-      return `${year}-${month}`;
-    }
+  // 日期选择变化
+  onDateChange(e) {
+    this.setData({ selectedDateIndex: parseInt(e.detail.value) });
+    this.fetchRecords();
   },
 
   onSubjectChange(e) {
@@ -203,30 +202,48 @@ Page({
   fetchRecords: async function() {
     wx.showLoading({ title: '加载中...' });
     try {
-      const [yearIdx, monthIdx] = this.data.selectedYearMonth;
-      const year = parseInt(this.data.yearMonthRange[0][yearIdx]);
-      const monthStr = this.data.yearMonthRange[1][monthIdx];
+      const dateIndex = this.data.selectedDateIndex;
+      const dateStr = this.data.dateRange[dateIndex];
       const selectedSubject = this.data.subjectRange[this.data.selectedSubjectIndex];
+      const isParent = this.data.isParent;
+      const selectedChildIndex = this.data.selectedChildIndex;
+      const childOptions = this.data.childOptions;
+
+      console.log('fetchRecords - 日期选项:', dateStr);
+      console.log('fetchRecords - 科目:', selectedSubject);
+      console.log('fetchRecords - 是否家长:', isParent);
+      console.log('fetchRecords - 选中孩子索引:', selectedChildIndex);
+      console.log('fetchRecords - 孩子选项:', childOptions);
 
       let startTime, endTime;
-      if (monthStr === '全部') {
-        startTime = new Date(year, 0, 1);
-        endTime = new Date(year, 11, 31, 23, 59, 59);
+      if (dateIndex === 0) {
+        // 全部时间 - 不限制时间范围
+        startTime = new Date(2023, 0, 1);
+        endTime = new Date();
       } else {
-        const month = parseInt(monthStr);
+        // 解析年月，如 "2026-03"
+        const parts = dateStr.split('-');
+        const year = parseInt(parts[0]);
+        const month = parseInt(parts[1]);
+        // 注意：月份从 0 开始，所以 month-1 是当月第一天
+        // endTime 是下个月第一天，这样能包含当月所有日期
         startTime = new Date(year, month - 1, 1);
-        endTime = new Date(year, month, 0, 23, 59, 59);
+        endTime = new Date(year, month, 1, 0, 0, 0);
+        this.setData({ currentYear: year });
       }
+
+      console.log('fetchRecords - 时间范围:', startTime.toISOString(), 'to', endTime.toISOString());
 
       // 构建查询条件：日期 + 科目 + (家长端可按孩子过滤)
       // 规则：
       // - 家长：可选某个孩子 openid，列表只显示该孩子的打卡
-      // - 家长未绑定孩子：下拉为“无”，列表为空提示（由 wxml 处理）
+      // - 家长未绑定孩子：下拉为"无"，列表为空提示（由 wxml 处理）
       // - 孩子/普通用户：只看自己的打卡（currentUserOpenId）
       let targetOpenId = this.data.currentUserOpenId;
 
-      if (this.data.isParent) {
-        const opt = this.data.childOptions[this.data.selectedChildIndex] || { openid: '' };
+      if (isParent) {
+        const opt = childOptions[selectedChildIndex] || { openid: '' };
+        console.log('fetchRecords - 家长模式，选中孩子选项:', opt);
         if (opt.openid) {
           targetOpenId = opt.openid;
         } else {
@@ -235,20 +252,22 @@ Page({
         }
       }
 
+      console.log('fetchRecords - 查询的 openid:', targetOpenId);
+
       const query = {
         createTime: _.gte(startTime).and(_.lte(endTime)),
         puncherOpenId: targetOpenId,
         subject: selectedSubject
       };
 
-      this.setData({
-        currentYear: year
-      });
+      console.log('fetchRecords - 查询条件:', JSON.stringify(query));
 
       const res = await db.collection('check_ins')
         .where(query)
         .orderBy('createTime', 'desc')
         .get();
+
+      console.log('fetchRecords - 查询结果数量:', res.data.length);
 
       this.processRecords(res.data);
     } catch (err) {
@@ -364,11 +383,6 @@ Page({
       return group;
     });
     this.setData({ monthGroups });
-  },
-
-  onYearMonthChange(e) {
-    this.setData({ selectedYearMonth: e.detail.value });
-    this.fetchRecords();
   },
 
   viewMedia: function(e) {
@@ -889,8 +903,8 @@ Page({
     });
   },
 
-  // 保存 AI 分析结果到数据库
-  saveAIResultToDB: function(recordId, result, subject) {
+  // 保存 AI 分析结果到数据库（使用云函数 updateCheckIn）
+  saveAIResultToDB: async function(recordId, result, subject) {
     const score = result.score || 0;
     const judgment = result.judgment || '';
     const recognizedContent = result.recognized_content || '';
@@ -898,25 +912,31 @@ Page({
     const correctQuestions = result.correct_questions || 0;
     const checkResults = result.check_results || [];
 
-    db.collection('check_ins').doc(recordId).update({
-      data: {
-        score: score,
-        aiAnalysis: judgment,
-        recognizedContent: recognizedContent,
-        totalQuestions: totalQuestions,
-        correctQuestions: correctQuestions,
-        checkResults: checkResults,
-        analyzedAt: db.serverDate()
-      },
-      success: (res) => {
+    try {
+      const cloudResult = await wx.cloud.callFunction({
+        name: 'updateCheckIn',
+        data: {
+          recordId: recordId,
+          score: score,
+          aiAnalysis: judgment,
+          recognizedContent: recognizedContent,
+          totalQuestions: totalQuestions,
+          correctQuestions: correctQuestions,
+          checkResults: checkResults,
+          manualEdited: false
+        }
+      });
+
+      if (cloudResult.result && cloudResult.result.success) {
         console.log('AI 结果保存成功');
         // 刷新记录列表
         this.fetchRecords();
-      },
-      fail: (err) => {
-        console.error('AI 结果保存失败', err);
+      } else {
+        console.error('AI 结果保存失败', cloudResult.result);
       }
-    });
+    } catch (err) {
+      console.error('AI 结果保存失败', err);
+    }
   },
 
   // 显示 AI 分析结果弹框
@@ -1006,5 +1026,97 @@ Page({
       urls: [that.data.fileID],
       current: that.data.fileID
     });
+  },
+
+  // 保存 AI 分析结果到评价列
+  saveAIResult: async function() {
+    const item = this.data.currentRatingItem;
+    if (!item || !item._id) {
+      wx.showToast({ title: '记录不存在', icon: 'none' });
+      return;
+    }
+
+    const { aiJudgment, aiScore } = this.data;
+
+    // 验证得分
+    if (aiScore === undefined || aiScore === null || aiScore === '') {
+      wx.showToast({ title: '缺少得分', icon: 'none' });
+      return;
+    }
+
+    try {
+      // 使用云函数更新打卡记录，将 AI 分析结果保存到 aiAnalysis 字段（评价列）
+      const result = await wx.cloud.callFunction({
+        name: 'updateCheckIn',
+        data: {
+          recordId: item._id,
+          score: aiScore,
+          aiAnalysis: aiJudgment || '',
+          manualEdited: true
+        }
+      });
+
+      console.log('saveAIResult - result:', result);
+
+      if (result.result && result.result.success) {
+        wx.showToast({ title: '评价已保存', icon: 'success' });
+        this.setData({
+          showAIResultModal: false,
+          currentRatingItem: null
+        });
+        // 刷新记录列表
+        this.fetchRecords();
+      } else {
+        console.error('保存失败 - result:', result);
+        wx.showToast({ 
+          title: '保存失败：' + (result.result ? result.result.message : '未知错误'), 
+          icon: 'error' 
+        });
+      }
+    } catch (error) {
+      console.error('保存 AI 结果失败', error);
+      wx.showToast({ title: '保存失败：' + (error.errMsg || error.message || '未知错误'), icon: 'error' });
+    }
+  },
+
+  // 关闭 AI 分析结果弹框（自动保存后关闭）
+  closeAIResultModal: async function() {
+    const item = this.data.currentRatingItem;
+    
+    // 如果有当前记录且 AI 分析结果存在，则自动保存
+    if (item && item._id && this.data.aiJudgment) {
+      const { aiJudgment, aiScore } = this.data;
+      
+      // 验证得分
+      if (aiScore !== undefined && aiScore !== null && aiScore !== '') {
+        try {
+          // 使用云函数更新打卡记录，将 AI 分析结果保存到 aiAnalysis 字段（评价列）
+          const result = await wx.cloud.callFunction({
+            name: 'updateCheckIn',
+            data: {
+              recordId: item._id,
+              score: aiScore,
+              aiAnalysis: aiJudgment || '',
+              manualEdited: true
+            }
+          });
+
+          console.log('closeAIResultModal - auto save result:', result);
+
+          if (result.result && result.result.success) {
+            console.log('关闭弹框时自动保存成功');
+          }
+        } catch (error) {
+          console.error('自动保存失败', error);
+        }
+      }
+    }
+    
+    this.setData({
+      showAIResultModal: false,
+      currentRatingItem: null
+    });
+    // 刷新记录列表，确保显示最新的评价内容
+    this.fetchRecords();
   }
 });

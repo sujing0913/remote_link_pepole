@@ -59,7 +59,9 @@ exports.main = async (event, context) => {
       userId: upsertRes.userId,
       createTime: upsertRes.user.create_time,
       updateTime: upsertRes.user.update_time,
-      roleUpdateTime: upsertRes.user.role_update_time
+      roleUpdateTime: upsertRes.user.role_update_time,
+      // 打卡圈公开设置
+      punchCirclePublic: upsertRes.user.punchCirclePublic || false
     };
   } catch (err) {
     console.error('getUserInfo failed:', err);

@@ -4,10 +4,8 @@
     <view class="filter-row">
       <view class="filter-item">
         <text>日期：</text>
-        <picker mode="multiSelector" range="{{yearMonthRange}}" value="{{selectedYearMonth}}" bindchange="onYearMonthChange">
-          <view class="picker">
-            {{formatYearMonthDisplay(selectedYearMonth[0], selectedYearMonth[1])}}
-          </view>
+        <picker mode="selector" range="{{dateRange}}" value="{{selectedDateIndex}}" bindchange="onDateChange">
+          <view class="picker">{{dateRange[selectedDateIndex]}}</view>
         </picker>
       </view>
 
@@ -396,7 +394,8 @@
       </scroll-view>
       <view class="ai-modal-footer">
         <button class="ai-modal-btn ai-modal-btn-outline" wx:if="{{fileType === 'image'}}" bindtap="viewOriginalImage">查看原图</button>
-        <button class="ai-modal-btn ai-modal-btn-primary" bindtap="closeAIResultModal">关闭</button>
+        <button class="ai-modal-btn ai-modal-btn-outline" bindtap="closeAIResultModal">取消</button>
+        <button class="ai-modal-btn ai-modal-btn-primary" bindtap="saveAIResult">保存</button>
       </view>
     </view>
   </view>

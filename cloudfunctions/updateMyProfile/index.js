@@ -1,5 +1,5 @@
 // cloudfunctions/updateMyProfile/index.js
-// 更新当前用户 users 档案：nickName / avatarUrl / role
+// 更新当前用户 users 档案：nickName / avatarUrl / role / punchCirclePublic
 // 支持角色切换校验和绑定状态检查
 //
 // 数据集合：users、binds
@@ -9,6 +9,7 @@
 // - role?: 'parent' | 'child' | 'normal' | ''
 // - setRole?: boolean                （true 时才允许更新 role）
 // - forceUpdateRole?: boolean        （true 时跳过绑定状态校验，强制更新）
+// - punchCirclePublic?: boolean      （是否公开打卡圈内容）
 //
 // 返回：{ success, data: { user, roleInfo }, message? }
 
@@ -32,7 +33,8 @@ exports.main = async (event, context) => {
       avatarUrl,
       role,
       setRole = false,
-      forceUpdateRole = false
+      forceUpdateRole = false,
+      punchCirclePublic
     } = event || {};
 
     const now = db.serverDate();
@@ -59,6 +61,11 @@ exports.main = async (event, context) => {
     }
     if (typeof avatarUrl !== 'undefined') {
       updateData.avatarUrl = String(avatarUrl);
+    }
+    
+    // 更新打卡圈公开设置
+    if (typeof punchCirclePublic !== 'undefined') {
+      updateData.punchCirclePublic = Boolean(punchCirclePublic);
     }
 
     // 角色更新逻辑

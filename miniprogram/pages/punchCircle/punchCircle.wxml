@@ -1,8 +1,23 @@
 <view class="container">
   <!-- 顶部标题 -->
   <view class="header">
-    <text class="title">今日打卡圈</text>
-    <text class="subtitle">看看大家今天的学习情况</text>
+    <view class="header-left">
+      <text class="title">今日打卡圈</text>
+    </view>
+    <!-- 公开状态和科目选择 -->
+    <view class="header-right">
+      <picker class="subject-picker" mode="selector" range="{{subjects}}" value="{{selectedSubjectIndex}}" bindchange="onSubjectChange">
+        <view class="picker-display">
+          <text>科目：</text>
+          <text class="picker-value">{{subjects[selectedSubjectIndex]}}</text>
+          <text class="picker-arrow">▼</text>
+        </view>
+      </picker>
+      <view class="public-status" bindtap="openSettings">
+        <text class="status-label">公开：</text>
+        <text class="status-value {{punchCirclePublic ? 'on' : 'off'}}">{{punchCirclePublic ? '是' : '否'}}</text>
+      </view>
+    </view>
   </view>
 
   <!-- 加载中 -->
@@ -15,7 +30,7 @@
   <scroll-view class="post-list" scroll-y="true" wx:if="{{!loading && posts.length > 0}}">
     <block wx:for="{{posts}}" wx:key="_id" wx:for-item="post">
       <view class="post-card">
-        <!-- 用户信息行 -->
+        <!-- 用户信息行（包含点赞按钮） -->
         <view class="user-row">
           <!-- 头像 -->
           <view class="avatar">
@@ -29,8 +44,14 @@
               <text>{{post.subject}}</text>
             </view>
           </view>
-          <!-- 时间 -->
-          <text class="post-time">{{formatTime(post.createTime)}}</text>
+          <!-- 时间和日期 -->
+          <text class="post-time">{{formatDateTime(post.createTime)}}</text>
+          <!-- 点赞按钮（小红花） -->
+          <view class="action-btn like-btn" bindtap="onLike" data-post-id="{{post._id}}" data-is-liked="{{post.isLiked}}">
+            <text class="{{post.isLiked ? 'liked' : ''}}">
+              🌺 {{post.likeCount || 0}}
+            </text>
+          </view>
         </view>
 
         <!-- 打卡内容 -->
@@ -68,30 +89,6 @@
           </view>
         </view>
 
-        <!-- 互动区域 -->
-        <view class="interaction-row">
-          <!-- 点赞按钮 -->
-          <view class="action-btn like-btn" bindtap="onLike" data-post-id="{{post._id}}" data-is-liked="{{post.likes.includes(currentUserOpenId)}}">
-            <text class="{{post.likes.includes(currentUserOpenId) ? 'liked' : ''}}">
-              {{post.likes.includes(currentUserOpenId) ? '❤️' : '🤍'}} {{post.likeCount || 0}}
-            </text>
-          </view>
-          
-          <!-- 评论按钮 -->
-          <view class="action-btn comment-btn" bindtap="onComment" data-post-id="{{post._id}}">
-            <text>💬 {{post.commentCount || 0}}</text>
-          </view>
-        </view>
-
-        <!-- 评论列表 -->
-        <view class="comments-section" wx:if="{{post.comments && post.comments.length > 0}}">
-          <block wx:for="{{post.comments}}" wx:key="_id" wx:for-item="comment">
-            <view class="comment-item">
-              <text class="comment-user">{{comment.userInfo.nickName}}:</text>
-              <text class="comment-content">{{comment.content}}</text>
-            </view>
-          </block>
-        </view>
       </view>
     </block>
   </scroll-view>
@@ -103,21 +100,32 @@
     <text class="empty-hint">快去打卡成为第一个吧！</text>
   </view>
 
-  <!-- 评论弹框 -->
-  <view class="comment-modal-mask" wx:if="{{showCommentModal}}" bindtap="closeCommentModal">
-    <view class="comment-modal" catchtap="void">
-      <view class="comment-header">
-        <text>发表评论</text>
-        <text class="close-btn" bindtap="closeCommentModal">✕</text>
+  <!-- 设置弹框 -->
+  <view class="settings-modal-mask" wx:if="{{showSettingsModal}}" bindtap="closeSettings">
+    <view class="settings-modal" catchtap="void">
+      <view class="settings-header">
+        <text>打卡圈隐私设置</text>
+        <text class="close-btn" bindtap="closeSettings">✕</text>
       </view>
-      <textarea 
-        class="comment-input" 
-        placeholder="写下你的评论..." 
-        maxlength="200"
-        bindinput="onCommentInput"
-      ></textarea>
-      <view class="comment-submit">
-        <button class="submit-btn" bindtap="submitComment">提交</button>
+      <view class="settings-content">
+        <view class="setting-item">
+          <view class="setting-info">
+            <text class="setting-title">公开打卡内容</text>
+            <text class="setting-desc">开启后，您的打卡内容将对所有人可见</text>
+          </view>
+          <switch 
+            class="setting-switch" 
+            checked="{{punchCirclePublic}}" 
+            bindchange="onPublicSwitchChange"
+            color="#07c160"
+          />
+        </view>
+        <view class="setting-hint">
+          <text>💡 关闭时，只有绑定的家长和同一家长下的孩子可以看到您的打卡内容</text>
+        </view>
+      </view>
+      <view class="settings-footer">
+        <button class="save-btn" bindtap="saveSettings">保存</button>
       </view>
     </view>
   </view>

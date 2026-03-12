@@ -1,6 +1,6 @@
 // cloudfunctions/updateCheckIn/index.js
-// 更新打卡记录：用于手动评分保存
-// 入参：{ recordId, score, aiAnalysis?, manualEdited? }
+// 更新打卡记录：用于手动评分/AI 评分保存
+// 入参：{ recordId, score?, aiAnalysis?, recognizedContent?, totalQuestions?, correctQuestions?, checkResults?, manualEdited? }
 
 const cloud = require('wx-server-sdk');
 
@@ -16,19 +16,27 @@ exports.main = async (event, context) => {
     return { success: false, message: '未获取到用户身份' };
   }
 
-  const { recordId, score, aiAnalysis, manualEdited = true } = event || {};
+  const { 
+    recordId, 
+    score, 
+    aiAnalysis, 
+    recognizedContent, 
+    totalQuestions, 
+    correctQuestions, 
+    checkResults,
+    manualEdited = true 
+  } = event || {};
 
   if (!recordId) {
     return { success: false, message: '缺少记录 ID' };
   }
 
-  if (score === undefined || score === null || score === '') {
-    return { success: false, message: '缺少得分' };
-  }
-
-  const scoreNum = parseInt(score);
-  if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 10) {
-    return { success: false, message: '得分应在 0-10 之间' };
+  // 验证得分（如果传入了 score 参数）
+  if (score !== undefined && score !== null && score !== '') {
+    const scoreNum = parseInt(score);
+    if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 10) {
+      return { success: false, message: '得分应在 0-10 之间' };
+    }
   }
 
   try {
@@ -72,12 +80,32 @@ exports.main = async (event, context) => {
 
     // 如果传入了 score，则更新 score
     if (score !== undefined && score !== null && score !== '') {
-      updateData.score = scoreNum;
+      updateData.score = parseInt(score);
     }
 
-    // 如果传入了 aiAnalysis，则更新 aiAnalysis
+    // 如果传入了 aiAnalysis，则更新 aiAnalysis（评价列）
     if (aiAnalysis !== undefined) {
       updateData.aiAnalysis = aiAnalysis || '';
+    }
+
+    // 如果传入了 recognizedContent，则更新 recognizedContent
+    if (recognizedContent !== undefined) {
+      updateData.recognizedContent = recognizedContent || '';
+    }
+
+    // 如果传入了 totalQuestions，则更新 totalQuestions
+    if (totalQuestions !== undefined) {
+      updateData.totalQuestions = totalQuestions || 0;
+    }
+
+    // 如果传入了 correctQuestions，则更新 correctQuestions
+    if (correctQuestions !== undefined) {
+      updateData.correctQuestions = correctQuestions || 0;
+    }
+
+    // 如果传入了 checkResults，则更新 checkResults
+    if (checkResults !== undefined) {
+      updateData.checkResults = checkResults || [];
     }
 
     const result = await db.collection('check_ins').doc(recordId).update({
