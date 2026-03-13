@@ -64,27 +64,59 @@ exports.main = async (event, context) => {
           isInit: true,
           createTime: new Date()
         }
-      })
+      });
       
       // 删除初始化记录
-      await db.collection('punch_circle').doc('init_collection').remove()
+      await db.collection('punch_circle').doc('init_collection').remove();
       
       results.push({
         collection: 'punch_circle',
         action: 'created'
-      })
+      });
     } catch (e) {
       if (e.errCode === -502005) {
         results.push({
           collection: 'punch_circle',
           action: 'already exists'
-        })
+        });
       } else {
         results.push({
           collection: 'punch_circle',
           action: 'create failed',
           error: e.message
-        })
+        });
+      }
+    }
+    
+    // 4. 初始化 tasks 集合（如果不存在）
+    try {
+      await db.collection('tasks').add({
+        data: {
+          _id: 'init_collection',
+          isInit: true,
+          createTime: new Date()
+        }
+      });
+      
+      // 删除初始化记录
+      await db.collection('tasks').doc('init_collection').remove();
+      
+      results.push({
+        collection: 'tasks',
+        action: 'created'
+      });
+    } catch (e) {
+      if (e.errCode === -502005) {
+        results.push({
+          collection: 'tasks',
+          action: 'already exists'
+        });
+      } else {
+        results.push({
+          collection: 'tasks',
+          action: 'create failed',
+          error: e.message
+        });
       }
     }
     

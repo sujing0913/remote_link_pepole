@@ -110,9 +110,12 @@
                 <text class="child-meta">绑定日期：{{c.bind_time || '-'}}</text>
               </view>
             </view>
-            <text class="select-tag {{selectedChildOpenIds.indexOf(c.child_openid) !== -1 ? 'on' : ''}}">
-              {{selectedChildOpenIds.indexOf(c.child_openid) !== -1 ? '已选' : ''}}
-            </text>
+            <view class="child-actions">
+              <button class="mini-task-btn" size="mini" bindtap="onAssignTask" data-child="{{c}}">📋 安排任务</button>
+              <text class="select-tag {{selectedChildOpenIds.indexOf(c.child_openid) !== -1 ? 'on' : ''}}">
+                {{selectedChildOpenIds.indexOf(c.child_openid) !== -1 ? '已选' : ''}}
+              </text>
+            </view>
           </view>
         </block>
       </checkbox-group>

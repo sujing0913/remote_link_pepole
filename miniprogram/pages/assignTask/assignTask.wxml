@@ -1,0 +1,147 @@
+<view class="assign-container">
+  <!-- 顶部标题 -->
+  <view class="header">
+    <text class="title">📋 安排任务</text>
+    <text class="subtitle">为孩子 {{childName}} 创建新任务</text>
+  </view>
+
+  <!-- 筛选条件模块 -->
+  <view class="section-card filter-section">
+    <view class="section-title">📚 筛选条件</view>
+    <view class="section-content">
+      <!-- 科目选择 -->
+      <view class="filter-row">
+        <view class="filter-item">
+          <text class="filter-label">科目</text>
+          <picker mode="selector" range="{{subjects}}" range-key="name" value="{{selectedSubjectIndex}}" bindchange="onSubjectChange">
+            <view class="picker-value">
+              <text class="picker-text">{{selectedSubject.name}}</text>
+              <text class="picker-arrow">›</text>
+            </view>
+          </picker>
+        </view>
+        
+        <!-- 年份选择 -->
+        <view class="filter-item">
+          <text class="filter-label">年份</text>
+          <picker mode="selector" range="{{yearOptions}}" value="{{selectedYearIndex}}" bindchange="onYearChange">
+            <view class="picker-value">
+              <text class="picker-text">{{yearOptions[selectedYearIndex]}}</text>
+              <text class="picker-arrow">›</text>
+            </view>
+          </picker>
+        </view>
+        
+        <!-- 月份选择 -->
+        <view class="filter-item">
+          <text class="filter-label">月份</text>
+          <picker mode="selector" range="{{monthOptions}}" value="{{selectedMonthIndex}}" bindchange="onMonthChange">
+            <view class="picker-value">
+              <text class="picker-text">{{monthOptions[selectedMonthIndex]}}</text>
+              <text class="picker-arrow">›</text>
+            </view>
+          </picker>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 安排任务模块 -->
+  <view class="section-card task-section">
+    <view class="section-title">📝 安排任务</view>
+    <view class="section-content">
+      <!-- 任务内容输入 -->
+      <view class="form-item">
+        <text class="form-label">任务要求</text>
+        <textarea 
+          class="task-content-input" 
+          placeholder="请输入任务要求，例如：完成数学练习第 1-5 题" 
+          value="{{taskContent}}" 
+          bindinput="onContentInput"
+          maxlength="500"
+          auto-height
+        ></textarea>
+      </view>
+
+      <!-- 上传媒体文件 -->
+      <view class="form-item">
+        <text class="form-label">附加图片/视频（可选）</text>
+        <view class="media-uploader">
+          <view class="media-preview" wx:if="{{mediaPreviewUrl}}">
+            <image class="preview-image" src="{{mediaPreviewUrl}}" mode="aspectFill" bindtap="previewMedia" wx:if="{{mediaType === 'image'}}"></image>
+            <video class="preview-video" src="{{mediaPreviewUrl}}" controls wx:if="{{mediaType === 'video'}}"></video>
+            <view class="remove-media" bindtap="removeMedia">
+              <text>🗑️ 删除</text>
+            </view>
+          </view>
+          <view class="upload-btn" bindtap="chooseMedia" wx:else>
+            <text class="upload-icon">📷</text>
+            <text class="upload-text">选择图片/视频</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 完成期限 -->
+      <view class="form-item">
+        <text class="form-label">完成期限</text>
+        <picker mode="date" value="{{deadlineDate}}" bindchange="onDeadlineChange">
+          <view class="picker-value date-picker">
+            <text>{{deadlineDate || '选择日期'}}</text>
+            <text class="arrow">›</text>
+          </view>
+        </picker>
+      </view>
+    </view>
+  </view>
+
+  <!-- 提交按钮 -->
+  <view class="submit-section">
+    <button class="submit-btn" bindtap="submitTask">✅ 创建任务</button>
+  </view>
+
+  <!-- 历史任务模块 -->
+  <view class="section-card history-section">
+    <view class="section-title">📜 历史任务（{{selectedSubject.name}} - {{yearOptions[selectedYearIndex]}}年{{monthOptions[selectedMonthIndex]}}）</view>
+    <view class="section-content">
+      <!-- 加载中 -->
+      <view class="loading" wx:if="{{loadingTasks}}">
+        <text>加载中...</text>
+      </view>
+      
+      <!-- 空状态 -->
+      <view class="empty-state" wx:if="{{!loadingTasks && historyTasks.length === 0}}">
+        <text class="empty-icon">📭</text>
+        <text class="empty-text">暂无历史任务</text>
+      </view>
+      
+    <!-- 表格头部 -->
+    <view class="table-header" wx:if="{{!loadingTasks && historyTasks.length > 0}}">
+      <view class="table-col-date">创建日期</view>
+      <view class="table-col-content">任务要求</view>
+      <view class="table-col-attach">附件</view>
+      <view class="table-col-deadline">期限</view>
+    </view>
+    
+    <!-- 表格内容 -->
+    <view class="table-body" wx:if="{{!loadingTasks && historyTasks.length > 0}}">
+      <view class="table-row" wx:for="{{historyTasks}}" wx:key="_id" wx:for-item="task">
+        <view class="table-col-date">{{task.createDate}}</view>
+        <view class="table-col-content">
+          <text class="task-text">{{task.content}}</text>
+        </view>
+        <view class="table-col-attach">
+          <view class="attach-btn" wx:if="{{task.hasMedia}}" bindtap="viewAttachment" data-task="{{task}}">
+            <text class="attach-icon">{{task.mediaType === 'image' ? '🖼️' : '🎬'}}</text>
+            <text class="attach-text">{{task.mediaType === 'image' ? '图片' : '视频'}}</text>
+          </view>
+          <text class="no-attach" wx:else>-</text>
+        </view>
+        <view class="table-col-deadline">
+          <text class="deadline-text" wx:if="{{task.deadline}}">{{task.deadline}}</text>
+          <text class="no-deadline" wx:else>-</text>
+        </view>
+      </view>
+    </view>
+    </view>
+  </view>
+</view>

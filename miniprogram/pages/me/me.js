@@ -444,5 +444,17 @@ Page({
   // 跳转绑定监督人页面
   onGoBind() {
     wx.navigateTo({ url: '/pages/bind/bind' });
+  },
+
+  // 跳转到任务安排页面，为孩子安排任务
+  onAssignTask(e) {
+    const child = e.currentTarget.dataset.child;
+    if (!child || !child.child_openid) {
+      wx.showToast({ title: '孩子信息无效', icon: 'none' });
+      return;
+    }
+    wx.navigateTo({
+      url: '/pages/assignTask/assignTask?childOpenId=' + child.child_openid + '&childName=' + encodeURIComponent(child.childName || '')
+    });
   }
 });

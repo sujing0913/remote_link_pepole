@@ -179,6 +179,27 @@ page {
   border-bottom: 1rpx solid #f0f0f0;
 }
 
+.child-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8rpx;
+}
+
+.mini-task-btn {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: #fff;
+  border-radius: 20rpx;
+  padding: 0 16rpx;
+  font-size: 22rpx;
+  border: none;
+}
+
+.mini-task-btn:active {
+  opacity: 0.8;
+  transform: scale(0.95);
+}
+
 .child-left {
   display: flex;
   flex-direction: row;

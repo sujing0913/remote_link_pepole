@@ -373,6 +373,30 @@
   font-weight: 600;
 }
 
+/* 蓝色任务卡按钮 */
+.task-card-btn-blue {
+  margin-top: 20rpx;
+  padding: 16rpx 50rpx;
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  border-radius: 36rpx;
+  box-shadow: 0 4rpx 20rpx rgba(79, 172, 254, 0.4);
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.task-card-btn-blue:active {
+  opacity: 0.8;
+  transform: scale(0.98);
+}
+
+.task-card-text {
+  font-size: 28rpx;
+  color: #fff;
+  font-weight: 600;
+}
+
 /* 绿色底部按钮 */
 .footer-btn-green {
   font-size: 26rpx;

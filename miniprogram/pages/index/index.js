@@ -369,6 +369,13 @@ Page({
     });
   },
 
+  // 跳转到任务卡页面
+  goToTaskCard: function() {
+    wx.navigateTo({
+      url: '/pages/taskCard/taskCard'
+    });
+  },
+
   // 打卡逻辑
   onPunch: function() {
     const that = this;
