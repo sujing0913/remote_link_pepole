@@ -5,7 +5,7 @@
       <view class="header-title">📋 任务卡</view>
       <view class="role-tag {{asParent ? 'parent' : (asChild ? 'child' : 'guest')}}">{{roleText}}</view>
     </view>
-    <view class="header-subtitle">近 7 天内的任务</view>
+    <view class="header-subtitle">{{weekInfo || '加载中...'}}</view>
     
     <!-- 家长端：孩子选择器 -->
     <view class="child-selector" wx:if="{{asParent && children.length > 0}}">

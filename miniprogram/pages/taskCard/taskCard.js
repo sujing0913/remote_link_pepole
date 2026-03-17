@@ -10,7 +10,9 @@ Page({
     // 孩子列表（家长端用）
     children: [],
     selectedChildIndex: -1,
-    selectedChild: null
+    selectedChild: null,
+    // 本周信息
+    weekInfo: ''
   },
 
   onLoad: async function(options) {
@@ -40,6 +42,48 @@ Page({
 
   onShow: function() {
     this.fetchRecentTasks();
+  },
+
+  // 获取本周的起止日期（周一到周日）
+  getWeekRange: function() {
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 是周日，1-6 是周一到周六
+    
+    // 计算本周一的日期（中国习惯：周一为一周开始）
+    const mondayOffset = dayOfWeek === 0 ? -6 : (1 - dayOfWeek);
+    const monday = new Date(today);
+    monday.setDate(monday.getDate() + mondayOffset);
+    monday.setHours(0, 0, 0, 0);
+    
+    // 本周日的日期
+    const sunday = new Date(monday);
+    sunday.setDate(sunday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+    
+    return {
+      monday,
+      sunday,
+      weekStartStr: this.formatDateForWeek(monday),
+      weekEndStr: this.formatDateForWeek(sunday),
+      year: monday.getFullYear()
+    };
+  },
+
+  // 格式化日期用于周显示（MM 月 DD 日）
+  formatDateForWeek: function(date) {
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return `${month}月${day}日`;
+  },
+
+  // 计算是第几周（ISO 周数）
+  getWeekNumber: function(date) {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+    const yearStart = new Date(d.getFullYear(), 0, 1);
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return weekNo;
   },
 
   // 获取用户角色和绑定关系
@@ -117,15 +161,19 @@ Page({
     });
   },
 
-  // 获取近 7 天的任务
+  // 获取本周的任务（周一到周日）
   fetchRecentTasks: async function() {
     const that = this;
     this.setData({ loading: true });
     
     try {
-      // 计算 7 天前的日期
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      // 获取本周的起止日期（周一到周日）
+      const weekRange = this.getWeekRange();
+      const weekNumber = this.getWeekNumber(new Date());
+      
+      // 设置周显示信息
+      const weekInfo = `${weekRange.year}年第${weekNumber}周（${weekRange.weekStartStr}至${weekRange.weekEndStr}）`;
+      this.setData({ weekInfo });
       
       let query = {};
       
@@ -137,7 +185,8 @@ Page({
           query = {
             childOpenId: this.data.selectedChild.child_openid,
             createTime: {
-              $gte: sevenDaysAgo
+              $gte: weekRange.monday,
+              $lte: weekRange.sunday
             }
           };
         } else {
@@ -148,7 +197,8 @@ Page({
               $in: childOpenIds
             },
             createTime: {
-              $gte: sevenDaysAgo
+              $gte: weekRange.monday,
+              $lte: weekRange.sunday
             }
           };
         }
@@ -157,7 +207,8 @@ Page({
         query = {
           childOpenId: this.data.currentUserOpenId,
           createTime: {
-            $gte: sevenDaysAgo
+            $gte: weekRange.monday,
+            $lte: weekRange.sunday
           }
         };
       } else {
@@ -168,12 +219,14 @@ Page({
             { childOpenId: this.data.currentUserOpenId }
           ],
           createTime: {
-            $gte: sevenDaysAgo
+            $gte: weekRange.monday,
+            $lte: weekRange.sunday
           }
         };
       }
       
       console.log('fetchRecentTasks query:', query);
+      console.log('weekInfo:', weekInfo);
       
       // 查询近 7 天的任务
       const res = await wx.cloud.database().collection('tasks')
