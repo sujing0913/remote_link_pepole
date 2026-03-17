@@ -1,0 +1,9 @@
+{
+  "name": "chooseMessageFile",
+  "version": "1.0.0",
+  "description": "从微信聊天中选择媒体文件云函数",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

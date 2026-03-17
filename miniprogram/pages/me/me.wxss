@@ -177,39 +177,20 @@ page {
   justify-content: space-between;
   padding: 18rpx 0;
   border-bottom: 1rpx solid #f0f0f0;
-}
-
-.child-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8rpx;
-}
-
-.mini-task-btn {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-  color: #fff;
-  border-radius: 20rpx;
-  padding: 0 16rpx;
-  font-size: 22rpx;
-  border: none;
-}
-
-.mini-task-btn:active {
-  opacity: 0.8;
-  transform: scale(0.95);
+  gap: 16rpx;
 }
 
 .child-left {
   display: flex;
   flex-direction: row;
   align-items: center;
-  min-width: 0;
   flex: 1;
+  min-width: 0;
+  gap: 12rpx;
 }
 
 .child-check {
-  margin-right: 16rpx;
+  flex-shrink: 0;
 }
 
 .child-main {
@@ -217,13 +198,13 @@ page {
   flex-direction: column;
   gap: 6rpx;
   min-width: 0;
+  flex: 1;
 }
 
 .child-name {
   font-size: 28rpx;
   font-weight: 700;
   color: #0b1220;
-  max-width: 480rpx;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -234,18 +215,24 @@ page {
   color: #667085;
 }
 
-.select-tag {
-  font-size: 22rpx;
-  color: #07c160;
-  background: rgba(7, 193, 96, 0.12);
-  padding: 6rpx 12rpx;
-  border-radius: 999rpx;
-  min-width: 60rpx;
-  text-align: center;
+/* 右侧：安排任务按钮 */
+.child-right {
+  flex-shrink: 0;
 }
 
-.select-tag.on {
-  background: rgba(7, 193, 96, 0.18);
+.mini-task-btn {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: #fff;
+  border-radius: 20rpx;
+  padding: 0 16rpx;
+  font-size: 22rpx;
+  border: none;
+  flex-shrink: 0;
+}
+
+.mini-task-btn:active {
+  opacity: 0.8;
+  transform: scale(0.95);
 }
 
 .toolbar {

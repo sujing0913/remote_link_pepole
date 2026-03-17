@@ -5,51 +5,21 @@
     <text class="subtitle">为孩子 {{childName}} 创建新任务</text>
   </view>
 
-  <!-- 筛选条件模块 -->
-  <view class="section-card filter-section">
-    <view class="section-title">📚 筛选条件</view>
-    <view class="section-content">
-      <!-- 科目选择 -->
-      <view class="filter-row">
-        <view class="filter-item">
-          <text class="filter-label">科目</text>
-          <picker mode="selector" range="{{subjects}}" range-key="name" value="{{selectedSubjectIndex}}" bindchange="onSubjectChange">
-            <view class="picker-value">
-              <text class="picker-text">{{selectedSubject.name}}</text>
-              <text class="picker-arrow">›</text>
-            </view>
-          </picker>
-        </view>
-        
-        <!-- 年份选择 -->
-        <view class="filter-item">
-          <text class="filter-label">年份</text>
-          <picker mode="selector" range="{{yearOptions}}" value="{{selectedYearIndex}}" bindchange="onYearChange">
-            <view class="picker-value">
-              <text class="picker-text">{{yearOptions[selectedYearIndex]}}</text>
-              <text class="picker-arrow">›</text>
-            </view>
-          </picker>
-        </view>
-        
-        <!-- 月份选择 -->
-        <view class="filter-item">
-          <text class="filter-label">月份</text>
-          <picker mode="selector" range="{{monthOptions}}" value="{{selectedMonthIndex}}" bindchange="onMonthChange">
-            <view class="picker-value">
-              <text class="picker-text">{{monthOptions[selectedMonthIndex]}}</text>
-              <text class="picker-arrow">›</text>
-            </view>
-          </picker>
-        </view>
-      </view>
-    </view>
-  </view>
-
   <!-- 安排任务模块 -->
   <view class="section-card task-section">
     <view class="section-title">📝 安排任务</view>
     <view class="section-content">
+      <!-- 科目选择 -->
+      <view class="form-item">
+        <text class="form-label">科目</text>
+        <picker mode="selector" range="{{subjects}}" range-key="name" value="{{selectedSubjectIndex}}" bindchange="onSubjectChange">
+          <view class="picker-value">
+            <text class="picker-text">{{selectedSubject.name}}</text>
+            <text class="picker-arrow">›</text>
+          </view>
+        </picker>
+      </view>
+
       <!-- 任务内容输入 -->
       <view class="form-item">
         <text class="form-label">任务要求</text>
@@ -67,16 +37,56 @@
       <view class="form-item">
         <text class="form-label">附加图片/视频（可选）</text>
         <view class="media-uploader">
-          <view class="media-preview" wx:if="{{mediaPreviewUrl}}">
-            <image class="preview-image" src="{{mediaPreviewUrl}}" mode="aspectFill" bindtap="previewMedia" wx:if="{{mediaType === 'image'}}"></image>
-            <video class="preview-video" src="{{mediaPreviewUrl}}" controls wx:if="{{mediaType === 'video'}}"></video>
-            <view class="remove-media" bindtap="removeMedia">
-              <text>🗑️ 删除</text>
-            </view>
+          <!-- 已选择媒体文件 -->
+          <view class="media-preview" wx:if="{{mediaPreviewUrl && mediaType}}">
+            <!-- 图片预览 -->
+            <block wx:if="{{mediaType === 'image'}}">
+              <image class="preview-image" src="{{mediaPreviewUrl}}" mode="aspectFill" bindtap="previewMedia"></image>
+              <view class="remove-media" bindtap="removeMedia">
+                <text>🗑️ 删除</text>
+              </view>
+            </block>
+            
+            <!-- 视频预览 -->
+            <block wx:elif="{{mediaType === 'video'}}">
+              <video 
+                class="preview-video" 
+                src="{{mediaPreviewUrl}}" 
+                controls 
+                object-fit="contain"
+                enable-progress-gesture="true"
+                binderror="onVideoError"
+                bindplay="onVideoReady"
+              >
+                您的浏览器不支持视频播放
+              </video>
+              <view class="remove-media" bindtap="removeMedia">
+                <text>🗑️ 删除</text>
+              </view>
+            </block>
+            
+            <!-- 未知类型 -->
+            <block wx:else>
+              <view class="unknown-file">
+                <text class="file-icon">📄</text>
+                <text class="file-name">已选择文件</text>
+              </view>
+              <view class="remove-media" bindtap="removeMedia">
+                <text>🗑️ 删除</text>
+              </view>
+            </block>
           </view>
-          <view class="upload-btn" bindtap="chooseMedia" wx:else>
-            <text class="upload-icon">📷</text>
-            <text class="upload-text">选择图片/视频</text>
+          
+          <!-- 未选择媒体文件 -->
+          <view class="upload-options" wx:if="{{!mediaPreviewUrl || !mediaType}}">
+            <view class="upload-btn" bindtap="chooseMedia">
+              <text class="upload-icon">📷</text>
+              <text class="upload-text">拍摄/相册</text>
+            </view>
+            <view class="upload-btn upload-btn-chat" bindtap="chooseMediaFromChat">
+              <text class="upload-icon">💬</text>
+              <text class="upload-text">从聊天选择</text>
+            </view>
           </view>
         </view>
       </view>
@@ -101,8 +111,35 @@
 
   <!-- 历史任务模块 -->
   <view class="section-card history-section">
-    <view class="section-title">📜 历史任务（{{selectedSubject.name}} - {{yearOptions[selectedYearIndex]}}年{{monthOptions[selectedMonthIndex]}}）</view>
+    <view class="section-title">📜 历史任务</view>
     <view class="section-content">
+      <!-- 筛选条件 -->
+      <view class="filter-row">
+        <view class="filter-item">
+          <text class="filter-label">年份</text>
+          <picker mode="selector" range="{{yearOptions}}" value="{{selectedYearIndex}}" bindchange="onYearChange">
+            <view class="picker-value">
+              <text class="picker-text">{{yearOptions[selectedYearIndex]}}</text>
+              <text class="picker-arrow">›</text>
+            </view>
+          </picker>
+        </view>
+        
+        <view class="filter-item">
+          <text class="filter-label">月份</text>
+          <picker mode="selector" range="{{monthOptions}}" value="{{selectedMonthIndex}}" bindchange="onMonthChange">
+            <view class="picker-value">
+              <text class="picker-text">{{monthOptions[selectedMonthIndex]}}</text>
+              <text class="picker-arrow">›</text>
+            </view>
+          </picker>
+        </view>
+      </view>
+
+      <view class="history-info">
+        <text>科目：{{selectedSubject.name}}</text>
+      </view>
+      
       <!-- 加载中 -->
       <view class="loading" wx:if="{{loadingTasks}}">
         <text>加载中...</text>
@@ -131,8 +168,10 @@
         </view>
         <view class="table-col-attach">
           <view class="attach-btn" wx:if="{{task.hasMedia}}" bindtap="viewAttachment" data-task="{{task}}">
-            <text class="attach-icon">{{task.mediaType === 'image' ? '🖼️' : '🎬'}}</text>
-            <text class="attach-text">{{task.mediaType === 'image' ? '图片' : '视频'}}</text>
+            <text class="attach-icon">{{task.mediaType === 'image' ? '🖼️' : (task.mediaType === 'video' ? '🎬' : '📄')}}</text>
+            <text class="attach-text">
+              {{task.mediaType === 'image' ? '图片' : (task.mediaType === 'video' ? '视频' : '文件')}}
+            </text>
           </view>
           <text class="no-attach" wx:else>-</text>
         </view>

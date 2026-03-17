@@ -20,5 +20,14 @@
     "navigationBarTextStyle": "black"
   },
   "sitemapLocation": "sitemap.json",
-  "style": "v2"
+  "style": "v2",
+  "requiredBackgroundModes": [],
+  "permission": {
+    "camera": {
+      "desc": "用于拍摄任务照片"
+    },
+    "writePhotosAlbum": {
+      "desc": "用于保存任务照片到相册"
+    }
+  }
 }

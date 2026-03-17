@@ -29,13 +29,16 @@
         <text>打卡</text>
       </button>
     </view>
-    <!-- 任务卡按钮 -->
-    <view class="task-card-btn-blue" bindtap="goToTaskCard">
-      <text class="task-card-text">📋 任务卡</text>
-    </view>
-    <!-- 打卡圈按钮 -->
-    <view class="punch-circle-btn-purple" bindtap="goToPunchCircle">
-      <text class="punch-circle-text">打卡圈</text>
+    <!-- 打卡圈和任务卡按钮行 -->
+    <view class="bottom-btns-row">
+      <!-- 任务卡按钮（左侧，红色） -->
+      <view class="task-card-btn-red" bindtap="goToTaskCard">
+        <text class="task-card-text">📋 任务卡</text>
+      </view>
+      <!-- 打卡圈按钮（右侧，紫色） -->
+      <view class="punch-circle-btn-purple" bindtap="goToPunchCircle">
+        <text class="punch-circle-text">打卡圈</text>
+      </view>
     </view>
   </view>
 

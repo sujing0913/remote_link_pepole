@@ -94,6 +94,7 @@
   <view class="card" wx:if="{{asParent}}">
     <view class="title">绑定孩子列表</view>
 
+    <!-- 工具栏：显示在列表上方 -->
     <view class="toolbar" wx:if="{{children && children.length > 0}}">
       <button class="danger-btn" size="mini" bindtap="onBatchUnbind">解绑已选</button>
       <text class="toolbar-tip">已选：{{selectedChildOpenIds.length || 0}}</text>
@@ -103,6 +104,7 @@
       <checkbox-group bindchange="onSelectChildren">
         <block wx:for="{{children}}" wx:key="child_openid" wx:for-item="c">
           <view class="child-item">
+            <!-- 左侧：复选框 + 孩子信息 -->
             <view class="child-left">
               <checkbox class="child-check" value="{{c.child_openid}}" />
               <view class="child-main">
@@ -110,11 +112,9 @@
                 <text class="child-meta">绑定日期：{{c.bind_time || '-'}}</text>
               </view>
             </view>
-            <view class="child-actions">
+            <!-- 右侧：安排任务按钮 -->
+            <view class="child-right">
               <button class="mini-task-btn" size="mini" bindtap="onAssignTask" data-child="{{c}}">📋 安排任务</button>
-              <text class="select-tag {{selectedChildOpenIds.indexOf(c.child_openid) !== -1 ? 'on' : ''}}">
-                {{selectedChildOpenIds.indexOf(c.child_openid) !== -1 ? '已选' : ''}}
-              </text>
             </view>
           </view>
         </block>

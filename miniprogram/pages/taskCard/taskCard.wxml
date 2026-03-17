@@ -1,101 +1,87 @@
 <view class="container">
-  <!-- 顶部标题 -->
-  <view class="header">
-    <text class="title">📋 任务卡</text>
-    <text class="subtitle">家长为孩子安排的学习任务</text>
+  <!-- 顶部标题卡片 -->
+  <view class="header-card">
+    <view class="header-top">
+      <view class="header-title">📋 任务卡</view>
+      <view class="role-tag {{asParent ? 'parent' : (asChild ? 'child' : 'guest')}}">{{roleText}}</view>
+    </view>
+    <view class="header-subtitle">近 7 天内的任务</view>
+    
+    <!-- 家长端：孩子选择器 -->
+    <view class="child-selector" wx:if="{{asParent && children.length > 0}}">
+      <picker class="child-picker" value="{{selectedChildIndex}}" range="{{children}}" range-key="childName" bindchange="onChildChange">
+        <view class="picker-display">
+          <text class="picker-label">👦 选择孩子：</text>
+          <text class="picker-value">{{selectedChild ? selectedChild.childName : '请选择'}}</text>
+          <text class="picker-arrow">›</text>
+        </view>
+      </picker>
+    </view>
   </view>
 
-  <!-- 筛选条件模块 -->
-  <view class="section-card filter-section">
-    <view class="section-title">📚 筛选条件</view>
-    <view class="section-content">
-      <!-- 孩子选择 -->
-      <view class="filter-row">
-        <view class="filter-item">
-          <text class="filter-label">孩子</text>
-          <picker mode="selector" range="{{childOptions}}" range-key="name" value="{{selectedChildIndex}}" bindchange="onChildChange">
-            <view class="picker-value">
-              <text class="picker-text">{{selectedChildIndex >= 0 && childOptions.length > 0 ? childOptions[selectedChildIndex].name : '全部孩子'}}</text>
-              <text class="picker-arrow">›</text>
-            </view>
-          </picker>
+  <!-- 任务列表 -->
+  <view class="task-list">
+    <!-- 加载中 -->
+    <view class="loading" wx:if="{{loading}}">
+      <text class="loading-icon">⏳</text>
+      <text class="loading-text">加载中...</text>
+    </view>
+    
+    <!-- 空状态 -->
+    <view class="empty" wx:if="{{!loading && tasks.length === 0}}">
+      <text class="empty-icon">📭</text>
+      <text class="empty-text">暂无任务</text>
+      <text class="empty-hint" wx:if="{{asParent}}">家长还没有为 {{selectedChild ? selectedChild.childName : '孩子'}} 安排任务哦</text>
+      <text class="empty-hint" wx:else>家长还没有为你安排任务哦</text>
+    </view>
+
+    <!-- 任务列表 -->
+    <view class="task-card" wx:for="{{tasks}}" wx:key="_id" wx:for-item="task">
+      <!-- 任务头部：科目和日期 -->
+      <view class="task-header">
+        <view class="subject-tag task-subject">{{task.subject}}</view>
+        <view class="task-date">{{task.createTime}}</view>
+      </view>
+      
+      <!-- 任务内容 -->
+      <view class="task-content">
+        <view class="content-text">{{task.content}}</view>
+      </view>
+      
+      <!-- 截止日期 -->
+      <view class="task-deadline" wx:if="{{task.deadline}}">
+        <text class="deadline-icon">⏰</text>
+        <text class="deadline-text">截止：{{task.deadline}}</text>
+      </view>
+      
+      <!-- 附件显示区域：支持图片和视频 -->
+      <view class="task-attachment" wx:if="{{task.mediaUrl}}">
+        <!-- 图片附件 -->
+        <view class="attachment-container" wx:if="{{task.mediaType === 'image'}}">
+          <image 
+            class="attachment-img" 
+            src="{{task.mediaUrl}}" 
+            mode="aspectFill"
+            bindtap="previewMedia"
+            data-url="{{task.mediaUrl}}"
+          ></image>
+          <view class="attachment-hint">点击图片预览</view>
         </view>
         
-        <!-- 科目选择 -->
-        <view class="filter-item">
-          <text class="filter-label">科目</text>
-          <picker mode="selector" range="{{subjects}}" range-key="name" value="{{selectedSubjectIndex}}" bindchange="onSubjectChange">
-            <view class="picker-value">
-              <text class="picker-text">{{subjects[selectedSubjectIndex].name}}</text>
-              <text class="picker-arrow">›</text>
-            </view>
-          </picker>
+        <!-- 视频附件 -->
+        <view class="attachment-container" wx:if="{{task.mediaType === 'video'}}">
+          <video 
+            class="attachment-video" 
+            src="{{task.mediaUrl}}" 
+            controls
+            show-play-btn="true"
+            show-progress="true"
+            enable-progress-gesture="true"
+            object-fit="contain"
+            style="width: 100%;"
+          ></video>
         </view>
       </view>
     </view>
-  </view>
-
-  <!-- 任务内容模块 -->
-  <view class="section-card task-section">
-    <view class="section-title">📝 任务内容</view>
-    <view class="section-content">
-      <!-- 加载中 -->
-      <view class="loading" wx:if="{{loading}}">
-        <view class="loading-spinner"></view>
-        <text>加载中...</text>
-      </view>
-
-      <!-- 空状态 -->
-      <view class="empty-state" wx:if="{{!loading && !currentTask}}">
-        <text class="empty-icon">📭</text>
-        <text class="empty-text">暂无任务</text>
-        <text class="empty-hint">请家长在个人设置页为孩子安排任务</text>
-      </view>
-
-      <!-- 任务卡片 -->
-      <view class="task-detail" wx:if="{{!loading && currentTask}}">
-        <!-- 任务信息 -->
-        <view class="task-info">
-          <view class="info-row">
-            <text class="info-label">👤 孩子：</text>
-            <text class="info-value">{{currentTask.childName}}</text>
-          </view>
-          <view class="info-row">
-            <text class="info-label">📚 科目：</text>
-            <text class="info-value">{{currentTask.subject}}</text>
-          </view>
-          <view class="info-row">
-            <text class="info-label">📅 创建时间：</text>
-            <text class="info-value">{{formatDateTime(currentTask.createTime)}}</text>
-          </view>
-          <view class="info-row" wx:if="{{currentTask.deadline}}">
-            <text class="info-label">⏰ 截止时间：</text>
-            <text class="info-value deadline">{{formatDate(currentTask.deadline)}}</text>
-          </view>
-        </view>
-
-        <!-- 任务内容 -->
-        <view class="task-detail-content">
-          <text class="detail-label">📝 任务要求：</text>
-          <text class="detail-text" wx:if="{{currentTask.content}}">{{currentTask.content}}</text>
-        </view>
-
-        <!-- 附件 -->
-        <view class="task-attachment" wx:if="{{currentTask.mediaUrl}}">
-          <text class="detail-label">📎 附件：</text>
-          <view class="attachment-content">
-            <!-- 图片 -->
-            <image class="attachment-image" src="{{currentTask.mediaUrl}}" mode="aspectFill" bindtap="previewMedia" wx:if="{{currentTask.mediaType === 'image'}}"></image>
-            <!-- 视频 -->
-            <video class="attachment-video" src="{{currentTask.mediaUrl}}" controls show-center-play-btn enable-progress-gesture object-fit="contain" wx:if="{{currentTask.mediaType === 'video'}}"></video>
-          </view>
-        </view>
-      </view>
-    </view>
-  </view>
-
-  <!-- 底部提示 -->
-  <view class="bottom-tip">
-    <text>💡 温馨提示：家长可在「个人设置」→「绑定孩子」→「安排任务」中为孩子创建新任务</text>
   </view>
 </view>
