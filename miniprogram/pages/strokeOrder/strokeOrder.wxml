@@ -1,0 +1,127 @@
+<!-- 笔顺查询小工具 -->
+<view class="stroke-order-container">
+  <!-- 页面标题 -->
+  <view class="page-header">
+    <text class="page-title">🔍 笔顺查询</text>
+  </view>
+
+  <!-- 查询区域 -->
+  <view class="search-section">
+    <view class="search-input-wrapper">
+      <input 
+        class="search-input" 
+        placeholder="输入汉字或拼音" 
+        value="{{searchInput}}"
+        bindinput="onSearchInput"
+        bindconfirm="onSearchConfirm"
+      />
+    </view>
+    <view class="search-btn-wrapper">
+      <button class="search-btn" bindtap="searchStrokeOrder">查看笔顺</button>
+    </view>
+  </view>
+
+  <!-- 查询结果展示 -->
+  <view class="result-section" wx:if="{{showResult}}">
+    <view class="result-header">
+      <view class="character-box">
+        <text class="character">{{currentChar}}</text>
+      </view>
+      <view class="char-info">
+        <view class="pinyin-row">
+          <text class="pinyin">{{pinyin}}</text>
+          <text class="audio-icon" bindtap="playAudio">🔊</text>
+        </view>
+        <view class="info-row">
+          <text class="info-label">部首：</text>
+          <text class="info-value">{{radical}}</text>
+        </view>
+        <view class="info-row">
+          <text class="info-label">笔画：</text>
+          <text class="info-value">{{totalStrokes}}</text>
+        </view>
+        <view class="info-row">
+          <text class="info-label">结构：</text>
+          <text class="info-value">{{structure}}</text>
+        </view>
+      </view>
+    </view>
+    
+    <!-- 笔顺动画区域 - 与历史查询列表格式一致 -->
+    <view class="stroke-animation-box">
+      <image 
+        class="stroke-gif" 
+        src="{{strokeGifUrl}}" 
+        mode="aspectFit"
+        wx:if="{{strokeGifUrl}}"
+      />
+    </view>
+  </view>
+
+  <!-- 历史查询列表 -->
+  <view class="history-section">
+    <view class="history-header">
+      <text class="history-title">历史查询</text>
+      <view class="filter-wrapper">
+        <!-- 孩子筛选（仅家长端显示） -->
+        <picker 
+          class="filter-picker" 
+          mode="selector" 
+          range="{{childOptions}}" 
+          range-key="name"
+          value="{{selectedChildIndex}}"
+          bindchange="onChildChange"
+          wx:if="{{isParent}}"
+        >
+          <view class="filter-btn">
+            <text class="filter-text">{{childOptions[selectedChildIndex].name}}</text>
+            <text class="filter-arrow">▼</text>
+          </view>
+        </picker>
+        
+        <!-- 月份筛选 -->
+        <picker 
+          class="filter-picker" 
+          mode="selector" 
+          range="{{monthOptions}}" 
+          value="{{selectedMonthIndex}}"
+          bindchange="onMonthChange"
+        >
+          <view class="filter-btn">
+            <text class="filter-text">{{monthOptions[selectedMonthIndex]}}</text>
+            <text class="filter-arrow">▼</text>
+          </view>
+        </picker>
+      </view>
+    </view>
+
+    <!-- 历史记录列表 -->
+    <view class="history-list">
+      <view class="history-item" wx:for="{{historyList}}" wx:key="_id">
+        <view class="item-character">
+          <text class="char-text">{{item.character}}</text>
+        </view>
+        <view class="item-pinyin">
+          <text class="pinyin-text">{{item.pinyin}}</text>
+          <text class="audio-icon" bindtap="playHistoryAudio" data-mp3url="{{item.pinyinMp3Url}}">🔊</text>
+        </view>
+        <view class="item-stroke-preview">
+          <image 
+            class="stroke-preview" 
+            src="{{item.strokeGifUrl}}" 
+            mode="aspectFit"
+            wx:if="{{item.strokeGifUrl}}"
+          />
+        </view>
+        <view class="item-date">
+          <text class="date-text">{{item.dateStr}}</text>
+        </view>
+      </view>
+      
+      <!-- 空状态提示 -->
+      <view class="empty-state" wx:if="{{historyList.length === 0}}">
+        <text class="empty-text">暂无查询记录</text>
+      </view>
+    </view>
+  </view>
+</view>

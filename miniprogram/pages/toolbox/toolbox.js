@@ -15,5 +15,12 @@ Page({
     wx.navigateTo({
       url: '/pages/wordbook/wordbook'
     });
+  },
+
+  // 跳转到笔顺查询页面
+  goToStrokeOrder: function() {
+    wx.navigateTo({
+      url: '/pages/strokeOrder/strokeOrder'
+    });
   }
 });

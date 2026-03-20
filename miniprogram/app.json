@@ -10,7 +10,8 @@
     "pages/wordbook/wordbook",
     "pages/punchCircle/punchCircle",
     "pages/taskCard/taskCard",
-    "pages/assignTask/assignTask"
+    "pages/assignTask/assignTask",
+    "pages/strokeOrder/strokeOrder"
   ],
   "window": {
     "backgroundColor": "#F6F6F6",
