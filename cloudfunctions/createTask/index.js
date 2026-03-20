@@ -14,7 +14,8 @@ exports.main = async (event, context) => {
     content, 
     mediaType, 
     mediaUrl, 
-    deadline 
+    startDate,
+    endDate
   } = event || {}
   
   try {
@@ -42,7 +43,8 @@ exports.main = async (event, context) => {
       content: content || '',
       mediaType: mediaType || '',
       mediaUrl: mediaUrl || '',
-      deadline: deadline ? new Date(deadline) : null,
+      startDate: startDate ? new Date(startDate) : null,
+      endDate: endDate ? new Date(endDate) : null,
       status: 'pending',
       createTime: db.serverDate(),
       completedAt: null,

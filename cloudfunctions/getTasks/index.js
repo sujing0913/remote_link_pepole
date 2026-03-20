@@ -73,7 +73,7 @@ exports.main = async (event, context) => {
         }
       }
       
-      // 格式化截止日期
+      // 格式化截止日期（兼容老字段 deadline）
       let deadline = ''
       if (task.deadline) {
         if (task.deadline instanceof Date) {
@@ -83,6 +83,48 @@ exports.main = async (event, context) => {
           const date = new Date(task.deadline.$date)
           deadline = `${date.getMonth() + 1}/${date.getDate()}`
         }
+      }
+      
+      // 格式化开始日期和结束日期（任务周期）
+      let startDate = ''
+      let endDate = ''
+      let periodText = ''
+      
+      // 处理开始日期
+      if (task.startDate) {
+        if (task.startDate instanceof Date) {
+          const date = task.startDate
+          startDate = `${date.getMonth() + 1}/${date.getDate()}`
+        } else if (task.startDate.$date) {
+          const date = new Date(task.startDate.$date)
+          startDate = `${date.getMonth() + 1}/${date.getDate()}`
+        }
+      }
+      
+      // 处理结束日期
+      if (task.endDate) {
+        if (task.endDate instanceof Date) {
+          const date = task.endDate
+          endDate = `${date.getMonth() + 1}/${date.getDate()}`
+        } else if (task.endDate.$date) {
+          const date = new Date(task.endDate.$date)
+          endDate = `${date.getMonth() + 1}/${date.getDate()}`
+        }
+      }
+      
+      // 兼容老数据：如果只有 deadline，则开始日期=结束日期=deadline
+      if (!startDate && !endDate && deadline) {
+        startDate = deadline
+        endDate = deadline
+      }
+      
+      // 构建周期显示文本
+      if (startDate && endDate) {
+        periodText = `${startDate} ~ ${endDate}`
+      } else if (startDate) {
+        periodText = `从 ${startDate}`
+      } else if (endDate) {
+        periodText = `至 ${endDate}`
       }
       
       let statusText = '待完成'
@@ -101,6 +143,9 @@ exports.main = async (event, context) => {
         completedDate,
         completedAt,
         deadline,
+        startDate,
+        endDate,
+        periodText,
         hasMedia: !!task.mediaUrl,
         statusText,
         statusClass

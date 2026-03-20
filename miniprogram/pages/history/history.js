@@ -1,6 +1,14 @@
 const db = wx.cloud.database();
 const _ = db.command;
 
+// 格式化日期为 YYYY-MM-DD
+const formatDate = (date) => {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 Page({
   data: {
     currentYear: new Date().getFullYear(),
@@ -1118,5 +1126,6 @@ Page({
     });
     // 刷新记录列表，确保显示最新的评价内容
     this.fetchRecords();
-  }
+  },
+
 });

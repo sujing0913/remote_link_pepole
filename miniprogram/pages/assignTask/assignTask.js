@@ -25,11 +25,18 @@ Page({
     mediaTempPath: '',
     mediaPreviewUrl: '',
     mediaFileId: '',
-    deadlineDate: '',
+    startDate: '',
+    endDate: '',
     currentUserOpenId: '',
     historyTasks: [],
     loadingTasks: false,
-    videoLoaded: false
+    videoLoaded: false,
+    
+    // 任务周期编辑相关
+    showTaskPeriodModal: false,
+    currentTask: null,
+    taskStartDate: '',
+    taskEndDate: ''
   },
 
   onLoad: function(options) {
@@ -371,9 +378,15 @@ Page({
     }
   },
 
-  onDeadlineChange: function(e) {
+  onStartDateChange: function(e) {
     this.setData({
-      deadlineDate: e.detail.value
+      startDate: e.detail.value
+    });
+  },
+
+  onEndDateChange: function(e) {
+    this.setData({
+      endDate: e.detail.value
     });
   },
 
@@ -525,7 +538,8 @@ Page({
           content: that.data.taskContent.trim(),
           mediaType: that.data.mediaType,
           mediaUrl: mediaUrl,
-          deadline: that.data.deadlineDate ? new Date(that.data.deadlineDate + ' 23:59:59') : null
+          startDate: that.data.startDate ? new Date(that.data.startDate + ' 00:00:00') : null,
+          endDate: that.data.endDate ? new Date(that.data.endDate + ' 23:59:59') : null
         }
       });
       
@@ -541,7 +555,8 @@ Page({
           mediaTempPath: '',
           mediaPreviewUrl: '',
           mediaFileId: '',
-          deadlineDate: ''
+          startDate: '',
+          endDate: ''
         });
         
         // 刷新历史任务列表
@@ -553,6 +568,171 @@ Page({
       console.error('创建任务失败', err);
       wx.hideLoading();
       wx.showToast({ title: '创建失败：' + (err.errMsg || '未知错误'), icon: 'none' });
+    }
+  },
+
+  // ====== 任务周期编辑功能 ======
+
+  // 解析任务日期
+  parseTaskDate: function(dateValue) {
+    if (!dateValue) return null;
+    try {
+      if (dateValue && typeof dateValue === 'object') {
+        if (dateValue.val) {
+          return new Date(dateValue.val);
+        }
+        if (dateValue.$date) {
+          return new Date(dateValue.$date);
+        }
+      }
+      if (typeof dateValue === 'string') {
+        return new Date(dateValue);
+      }
+      return new Date(dateValue);
+    } catch (e) {
+      console.error('parseTaskDate 失败:', e);
+      return null;
+    }
+  },
+
+  // 格式化日期为 YYYY-MM-DD
+  formatDate: function(date) {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  },
+
+  // 显示任务周期编辑弹框
+  showEditTaskPeriod: async function(e) {
+    const task = e.currentTarget.dataset.task;
+    if (!task) return;
+
+    // 获取当前日期作为默认值
+    const today = this.formatDate(new Date());
+
+    // 格式化日期
+    let startDateStr = '';
+    let endDateStr = '';
+
+    if (task.startDate) {
+      const startDate = this.parseTaskDate(task.startDate);
+      if (startDate) {
+        startDateStr = this.formatDate(startDate);
+      }
+    }
+    if (task.endDate) {
+      const endDate = this.parseTaskDate(task.endDate);
+      if (endDate) {
+        endDateStr = this.formatDate(endDate);
+      }
+    }
+
+    // 如果没有周期，使用 deadline
+    if (!startDateStr && !endDateStr && task.deadline) {
+      const deadline = this.parseTaskDate(task.deadline);
+      if (deadline) {
+        startDateStr = this.formatDate(deadline);
+        endDateStr = this.formatDate(deadline);
+      }
+    }
+
+    this.setData({
+      currentTask: task,
+      taskStartDate: startDateStr || today, // 默认显示当前日期
+      taskEndDate: endDateStr || today,     // 默认显示当前日期
+      showTaskPeriodModal: true
+    });
+  },
+
+  // 关闭任务周期编辑弹框
+  closeTaskPeriodModal: function() {
+    this.setData({
+      showTaskPeriodModal: false,
+      currentTask: null,
+      taskStartDate: '',
+      taskEndDate: ''
+    });
+  },
+
+  // 阻止弹框内容点击事件冒泡
+  stopPropagation: function() {
+    // 空函数，阻止事件冒泡
+  },
+
+  // 开始日期选择变化（日期选择器直接返回 YYYY-MM-DD 格式）
+  onTaskStartDateChange: function(e) {
+    this.setData({
+      taskStartDate: e.detail.value
+    });
+  },
+
+  // 结束日期选择变化（日期选择器直接返回 YYYY-MM-DD 格式）
+  onTaskEndDateChange: function(e) {
+    this.setData({
+      taskEndDate: e.detail.value
+    });
+  },
+
+  // 保存任务周期
+  saveTaskPeriod: async function() {
+    const { currentTask, taskStartDate, taskEndDate } = this.data;
+
+    if (!currentTask || !currentTask._id) {
+      wx.showToast({ title: '任务不存在', icon: 'none' });
+      return;
+    }
+
+    if (!taskStartDate || !taskEndDate) {
+      wx.showToast({ title: '请选择开始和结束日期', icon: 'none' });
+      return;
+    }
+
+    try {
+      const result = await wx.cloud.callFunction({
+        name: 'updateTask',
+        data: {
+          taskId: currentTask._id,
+          startDate: taskStartDate,
+          endDate: taskEndDate
+        }
+      });
+
+      console.log('saveTaskPeriod - result:', result);
+
+      if (result.result && result.result.success) {
+        // 格式化周期显示文本
+        const periodText = `${taskStartDate}至${taskEndDate}`;
+        
+        // 更新当前任务列表中的对应项
+        const historyTasks = this.data.historyTasks.map(task => {
+          if (task._id === currentTask._id) {
+            return {
+              ...task,
+              startDate: taskStartDate,
+              endDate: taskEndDate,
+              periodText: periodText
+            };
+          }
+          return task;
+        });
+
+        wx.showToast({ title: '周期已更新', icon: 'success' });
+        
+        this.setData({
+          historyTasks: historyTasks
+        });
+        
+        this.closeTaskPeriodModal();
+      } else {
+        wx.showToast({ 
+          title: '更新失败：' + (result.result ? result.result.message : '未知错误'), 
+          icon: 'error' 
+        });
+      }
+    } catch (error) {
+      console.error('保存任务周期失败', error);
+      wx.showToast({ title: '保存失败：' + (error.errMsg || error.message || '未知错误'), icon: 'error' });
     }
   }
 });

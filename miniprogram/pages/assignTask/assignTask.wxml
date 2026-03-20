@@ -91,12 +91,22 @@
         </view>
       </view>
 
-      <!-- 完成期限 -->
+      <!-- 任务周期 -->
       <view class="form-item">
-        <text class="form-label">完成期限</text>
-        <picker mode="date" value="{{deadlineDate}}" bindchange="onDeadlineChange">
+        <text class="form-label">开始日期</text>
+        <picker mode="date" value="{{startDate}}" bindchange="onStartDateChange">
           <view class="picker-value date-picker">
-            <text>{{deadlineDate || '选择日期'}}</text>
+            <text>{{startDate || '选择开始日期'}}</text>
+            <text class="arrow">›</text>
+          </view>
+        </picker>
+      </view>
+      
+      <view class="form-item">
+        <text class="form-label">结束日期</text>
+        <picker mode="date" value="{{endDate}}" bindchange="onEndDateChange">
+          <view class="picker-value date-picker">
+            <text>{{endDate || '选择结束日期'}}</text>
             <text class="arrow">›</text>
           </view>
         </picker>
@@ -156,7 +166,7 @@
       <view class="table-col-date">创建日期</view>
       <view class="table-col-content">任务要求</view>
       <view class="table-col-attach">附件</view>
-      <view class="table-col-deadline">期限</view>
+      <view class="table-col-period">任务周期</view>
     </view>
     
     <!-- 表格内容 -->
@@ -175,12 +185,46 @@
           </view>
           <text class="no-attach" wx:else>-</text>
         </view>
-        <view class="table-col-deadline">
-          <text class="deadline-text" wx:if="{{task.deadline}}">{{task.deadline}}</text>
-          <text class="no-deadline" wx:else>-</text>
+        <view class="table-col-period clickable" bindtap="showEditTaskPeriod" data-task="{{task}}">
+          <text class="period-text {{task.periodText ? '' : 'empty'}}" wx:if="{{task.periodText}}">{{task.periodText}}</text>
+          <text class="period-text empty" wx:else>点击设置周期</text>
         </view>
       </view>
     </view>
+    </view>
+  </view>
+
+  <!-- 任务周期编辑弹框 -->
+  <view class="modal-mask" wx:if="{{showTaskPeriodModal}}" bindtap="closeTaskPeriodModal">
+    <view class="modal-content" catchtap="stopPropagation">
+      <view class="modal-header">
+        <text class="modal-title">编辑任务周期</text>
+        <text class="modal-close" bindtap="closeTaskPeriodModal">✕</text>
+      </view>
+      <view class="modal-body">
+        <view class="form-item">
+          <text class="form-label">开始日期</text>
+          <picker mode="date" value="{{taskStartDate}}" start="2020-01-01" end="2030-12-31" bindchange="onTaskStartDateChange">
+            <view class="picker-value date-picker">
+              <text>{{taskStartDate || '请选择开始日期'}}</text>
+              <text class="arrow">›</text>
+            </view>
+          </picker>
+        </view>
+        <view class="form-item">
+          <text class="form-label">结束日期</text>
+          <picker mode="date" value="{{taskEndDate}}" start="2020-01-01" end="2030-12-31" bindchange="onTaskEndDateChange">
+            <view class="picker-value date-picker">
+              <text>{{taskEndDate || '请选择结束日期'}}</text>
+              <text class="arrow">›</text>
+            </view>
+          </picker>
+        </view>
+      </view>
+      <view class="modal-footer">
+        <button class="modal-btn cancel" bindtap="closeTaskPeriodModal">取消</button>
+        <button class="modal-btn confirm" bindtap="saveTaskPeriod">保存</button>
+      </view>
     </view>
   </view>
 </view>

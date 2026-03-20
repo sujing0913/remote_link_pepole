@@ -1,21 +1,52 @@
 <view class="container">
-  <!-- 顶部过滤与添加 -->
-  <view class="topbar">
-    <view class="filters">
-      <view class="filter">
-        <picker mode="selector" range="{{monthFilterOptions}}" value="{{monthFilterIndex}}" bindchange="onMonthFilterChange">
-          <view class="picker dropdown filter-dd">选择年月：{{monthFilterOptions[monthFilterIndex]}} <text class="arrow">▼</text></view>
+  <!-- 第一行：筛选器 -->
+  <view class="filters">
+    <view class="filter-row">
+      <!-- 孩子选择器（家长端） -->
+      <view class="filter-item" wx:if="{{asParent && children.length > 0}}">
+        <text>孩子：</text>
+        <picker mode="selector" range="{{childFilterOptions}}" value="{{childFilterIndex}}" bindchange="onChildChange">
+          <view class="picker">{{childFilterOptions[childFilterIndex]}}</view>
         </picker>
       </view>
 
-      <view class="filter">
+      <!-- 年月过滤 -->
+      <view class="filter-item">
+        <text>年月：</text>
+        <picker mode="selector" range="{{monthFilterOptions}}" value="{{monthFilterIndex}}" bindchange="onMonthFilterChange">
+          <view class="picker">{{monthFilterOptions[monthFilterIndex]}}</view>
+        </picker>
+      </view>
+
+      <!-- 是否记会过滤 -->
+      <view class="filter-item">
+        <text>记会：</text>
         <picker mode="selector" range="{{rememberFilterOptions}}" value="{{rememberFilterIndex}}" bindchange="onRememberFilterChange">
-          <view class="picker dropdown filter-dd">是否记会：{{rememberFilterOptions[rememberFilterIndex]}} <text class="arrow">▼</text></view>
+          <view class="picker">{{rememberFilterOptions[rememberFilterIndex]}}</view>
         </picker>
       </view>
     </view>
+  </view>
 
-    <button class="add-btn" size="mini" bindtap="openAddModal">添加单词</button>
+  <!-- 第二行：统计卡片 -->
+  <view class="stats-card">
+    <view class="stats-row">
+      <view class="stats-group">
+        <view class="stat-item">
+          <text class="stat-value stat-total">{{totalCount}}</text>
+          <text class="stat-label">单词总数</text>
+        </view>
+        <view class="stat-item">
+          <text class="stat-value stat-remember">{{rememberedCount}}</text>
+          <text class="stat-label">已记会</text>
+        </view>
+        <view class="stat-item">
+          <text class="stat-value stat-forgot">{{forgotCount}}</text>
+          <text class="stat-label">未记会</text>
+        </view>
+      </view>
+      <button class="add-btn" bindtap="openAddModal">添加单词</button>
+    </view>
   </view>
 
   <!-- 空态 -->

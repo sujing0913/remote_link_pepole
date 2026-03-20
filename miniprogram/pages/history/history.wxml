@@ -16,7 +16,7 @@
         </picker>
       </view>
 
-      <!-- 家长端：孩子筛选（无绑定则显示“无”） -->
+      <!-- 家长端：孩子筛选（无绑定则显示"无"） -->
       <view class="filter-item" wx:if="{{isParent}}">
         <text>孩子：</text>
         <picker mode="selector" range="{{childOptions}}" range-key="name" value="{{selectedChildIndex}}" bindchange="onChildChange">
@@ -396,6 +396,39 @@
         <button class="ai-modal-btn ai-modal-btn-outline" wx:if="{{fileType === 'image'}}" bindtap="viewOriginalImage">查看原图</button>
         <button class="ai-modal-btn ai-modal-btn-outline" bindtap="closeAIResultModal">取消</button>
         <button class="ai-modal-btn ai-modal-btn-primary" bindtap="saveAIResult">保存</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 任务周期编辑弹框 -->
+  <view class="task-period-modal" wx:if="{{showTaskPeriodModal}}" bindtap="closeTaskPeriodModal">
+    <view class="task-period-content" catchtap="stopPropagation">
+      <view class="task-period-header">
+        <text class="task-period-title">✏️ 修改任务周期</text>
+      </view>
+      <scroll-view class="task-period-body" scroll-y="true">
+        <view class="task-info">
+          <text class="task-name">任务：{{currentTask ? currentTask.title : ''}}</text>
+        </view>
+        <view class="form-item">
+          <text class="item-label">开始日期</text>
+          <picker mode="selector" range="{{monthOptions}}" value="{{selectedStartMonthIndex}}" bindchange="onTaskStartDateChange">
+            <view class="picker">{{taskStartDate ? taskStartDate : '请选择开始日期'}}</view>
+          </picker>
+        </view>
+        <view class="form-item">
+          <text class="item-label">结束日期</text>
+          <picker mode="selector" range="{{monthOptions}}" value="{{selectedEndMonthIndex}}" bindchange="onTaskEndDateChange">
+            <view class="picker">{{taskEndDate ? taskEndDate : '请选择结束日期'}}</view>
+          </picker>
+        </view>
+        <view class="task-period-tip">
+          <text>提示：选择月份后，开始日期为该月 1 日，结束日期为该月最后一天</text>
+        </view>
+      </scroll-view>
+      <view class="task-period-footer">
+        <button class="btn btn-cancel" bindtap="closeTaskPeriodModal">取消</button>
+        <button class="btn btn-save" bindtap="saveTaskPeriod">保存</button>
       </view>
     </view>
   </view>

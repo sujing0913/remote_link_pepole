@@ -611,8 +611,8 @@
   text-align: center;
 }
 
-.table-col-deadline {
-  width: 100rpx;
+.table-col-period {
+  width: 140rpx;
   font-size: 24rpx;
   color: #fff;
   font-weight: 500;
@@ -677,8 +677,8 @@
   text-align: center;
 }
 
-.table-row .table-col-deadline {
-  width: 100rpx;
+.table-row .table-col-period {
+  width: 140rpx;
   font-size: 24rpx;
   color: #666;
   text-align: center;
@@ -717,15 +717,133 @@
   color: #ccc;
 }
 
-.deadline-text {
-  font-size: 24rpx;
-  color: #ff9800;
+.period-text {
+  font-size: 22rpx;
+  color: #667eea;
   font-weight: 500;
 }
 
-.no-deadline {
+.period-text.empty {
+  font-size: 22rpx;
+  color: #ff9800;
+  font-weight: 400;
+  border: 1rpx dashed #ff9800;
+  padding: 4rpx 8rpx;
+  border-radius: 4rpx;
+  background-color: rgba(255, 152, 0, 0.1);
+}
+
+/* 可点击的周期列 */
+.table-col-period.clickable {
+  cursor: pointer;
+  position: relative;
+}
+
+.table-col-period.clickable:active {
+  background-color: rgba(102, 126, 234, 0.1);
+  border-radius: 8rpx;
+}
+
+/* 弹框样式 */
+.modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  width: 85%;
+  max-width: 600rpx;
+  background-color: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.2);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    transform: translateY(-50rpx);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24rpx 30rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.modal-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #fff;
+}
+
+.modal-close {
+  font-size: 40rpx;
+  color: #fff;
+  line-height: 1;
+  padding: 0 10rpx;
+}
+
+.modal-body {
+  padding: 30rpx;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 20rpx 30rpx;
+  background-color: #f8f8f8;
+  border-top: 1rpx solid #eee;
+}
+
+.modal-btn {
+  width: 45%;
+  height: 72rpx;
+  border-radius: 36rpx;
   font-size: 28rpx;
-  color: #ccc;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+}
+
+.modal-btn::after {
+  border: none;
+}
+
+.modal-btn.cancel {
+  background-color: #f0f0f0;
+  color: #666;
+}
+
+.modal-btn.cancel:active {
+  background-color: #e0e0e0;
+}
+
+.modal-btn.confirm {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+
+.modal-btn.confirm:active {
+  opacity: 0.8;
 }
 
 /* 状态徽章 */

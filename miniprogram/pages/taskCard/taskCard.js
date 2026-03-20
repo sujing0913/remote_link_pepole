@@ -175,19 +175,20 @@ Page({
       const weekInfo = `${weekRange.year}年第${weekNumber}周（${weekRange.weekStartStr}至${weekRange.weekEndStr}）`;
       this.setData({ weekInfo });
       
+      // 获取今天的日期范围（用于孩子角色过滤）
+      const today = new Date();
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
+      const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+      
       let query = {};
       
       // 根据角色构建不同的查询条件
       if (this.data.asParent) {
-        // 家长角色：查询所有孩子的任务
+        // 家长角色：查询所有孩子的任务（不限制时间，客户端过滤今天的）
         if (this.data.selectedChild) {
           // 如果选择了特定孩子，只查询该孩子的任务
           query = {
-            childOpenId: this.data.selectedChild.child_openid,
-            createTime: {
-              $gte: weekRange.monday,
-              $lte: weekRange.sunday
-            }
+            childOpenId: this.data.selectedChild.child_openid
           };
         } else {
           // 如果没有选择孩子（理论上不会），查询所有关联孩子的任务
@@ -195,24 +196,27 @@ Page({
           query = {
             childOpenId: {
               $in: childOpenIds
-            },
-            createTime: {
-              $gte: weekRange.monday,
-              $lte: weekRange.sunday
             }
           };
         }
+        
+        // 周显示改为"今天"
+        this.setData({ 
+          weekInfo: `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日` 
+        });
       } else if (this.data.asChild) {
-        // 孩子角色：查询安排给自己的任务
+        // 孩子角色：只显示今天的任务（当天日期在周期内的任务）
+        // 先查询所有分配给当前孩子的任务，然后在客户端过滤
         query = {
-          childOpenId: this.data.currentUserOpenId,
-          createTime: {
-            $gte: weekRange.monday,
-            $lte: weekRange.sunday
-          }
+          childOpenId: this.data.currentUserOpenId
         };
+        
+        // 周显示改为"今天"
+        this.setData({ 
+          weekInfo: `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日` 
+        });
       } else {
-        // 普通用户：查询与自己相关的任务
+        // 普通用户：查询与自己相关的任务（本周内）
         query = {
           $or: [
             { parentId: this.data.currentUserOpenId },
@@ -267,8 +271,54 @@ Page({
           };
         }));
         
+        // 家长和孩子角色：过滤出今天的任务（当天日期在周期内的任务）
+        let filteredTasks = tasks;
+        if (this.data.asParent || this.data.asChild) {
+          filteredTasks = tasks.filter(task => {
+            console.log('=== 检查任务 ===', task.title);
+            console.log('task.startDate:', task.startDate, 'type:', typeof task.startDate);
+            console.log('task.endDate:', task.endDate, 'type:', typeof task.endDate);
+            console.log('task.deadline:', task.deadline, 'type:', typeof task.deadline);
+            
+            // 情况 1：有 startDate 和 endDate，检查今天是否在范围内
+            if (task.startDate && task.endDate) {
+              const startDate = this.parseTaskDate(task.startDate);
+              const endDate = this.parseTaskDate(task.endDate);
+              console.log('解析后 startDate:', startDate, 'endDate:', endDate);
+              // 今天 >= 开始日期 且 今天 <= 结束日期
+              const isInRange = today >= startDate && today <= endDate;
+              console.log('是否在范围内:', isInRange);
+              return isInRange;
+            }
+            // 情况 2：只有 deadline（老数据），检查 deadline 是否是今天
+            if (task.deadline && !task.startDate && !task.endDate) {
+              const deadlineDate = this.parseTaskDate(task.deadline);
+              console.log('deadlineDate:', deadlineDate);
+              const isToday = deadlineDate && (
+                deadlineDate.getFullYear() === today.getFullYear() &&
+                deadlineDate.getMonth() === today.getMonth() &&
+                deadlineDate.getDate() === today.getDate()
+              );
+              console.log('是否是今天:', isToday);
+              return isToday;
+            }
+            // 情况 3：没有 startDate/endDate/deadline，使用 createTime 作为 fallback
+            if (task.createTime) {
+              const createTimeDate = this.parseTaskDate(task.createTime);
+              return createTimeDate && (
+                createTimeDate.getFullYear() === today.getFullYear() &&
+                createTimeDate.getMonth() === today.getMonth() &&
+                createTimeDate.getDate() === today.getDate()
+              );
+            }
+            return false;
+          });
+          
+          console.log('过滤后的任务（家长/孩子）:', filteredTasks);
+        }
+        
         this.setData({
-          tasks: tasks
+          tasks: filteredTasks
         });
       } else {
         this.setData({
@@ -325,6 +375,39 @@ Page({
       return `${month}-${day}`;
     } catch (e) {
       return String(dateTime);
+    }
+  },
+
+  // 解析任务日期（支持云数据库格式和字符串格式）
+  parseTaskDate: function(dateValue) {
+    if (!dateValue) return null;
+    try {
+      // 处理云开发数据库的 Date 对象格式 {type: 'timestamp', val: timestamp}
+      if (dateValue && typeof dateValue === 'object') {
+        if (dateValue.val) {
+          return new Date(dateValue.val);
+        }
+        if (dateValue.$date) {
+          return new Date(dateValue.$date);
+        }
+      }
+      // 如果是字符串格式（如 "3/19"），需要转换为日期
+      if (typeof dateValue === 'string') {
+        const now = new Date();
+        const parts = dateValue.split('/');
+        if (parts.length === 2) {
+          const month = parseInt(parts[0]) - 1;
+          const day = parseInt(parts[1]);
+          return new Date(now.getFullYear(), month, day);
+        }
+        // 尝试直接解析字符串
+        return new Date(dateValue);
+      }
+      // 直接是 Date 对象
+      return new Date(dateValue);
+    } catch (e) {
+      console.error('parseTaskDate 失败:', e);
+      return null;
     }
   },
 
